@@ -322,6 +322,7 @@ function PariTransactionItem({ tx, user, badgeColors, typeLabels, refreshData }:
       const gainPot = montantTotal - gainGagnant;
       // 1. Créditer le gagnant
       const { data: gagnant } = await supabase.from("users").select("solde").eq("uid", winnerUid).single();
+      if (!gagnant) throw new Error("Le gagnant n'a pas été trouvé dans la base de données");
       await supabase.from("users").update({ solde: gagnant.solde + gainGagnant }).eq("uid", winnerUid);
       // 2. Créditer le pot commun
       // (ici, on suppose que le pot commun est un "user" spécial avec uid "pot_commun" ou via une transaction dédiée)
