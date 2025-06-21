@@ -1,0 +1,123 @@
+{
+  "designSystem": {
+    "name": "Crypto Wallet App UI",
+    "theme": {
+      "colorMode": "dark",
+      "primaryColor": "#0F172A",
+      "accentColor": "#38BDF8",
+      "backgroundDark": "#0B0F1C",
+      "surfaceDark": "#1E293B",
+      "textPrimary": "#FFFFFF",
+      "textSecondary": "#94A3B8",
+      "positive": "#22C55E",
+      "negative": "#EF4444"
+    },
+    "typography": {
+      "fontFamily": "SF Pro / Inter / Sans-serif",
+      "headline": {
+        "fontSize": 28,
+        "fontWeight": "700"
+      },
+      "title": {
+        "fontSize": 20,
+        "fontWeight": "600"
+      },
+      "body": {
+        "fontSize": 16,
+        "fontWeight": "400"
+      },
+      "caption": {
+        "fontSize": 12,
+        "fontWeight": "400"
+      }
+    },
+    "layout": {
+      "spacingSystem": "8pt grid",
+      "padding": 16,
+      "cardRadius": 16,
+      "buttonRadius": 10,
+      "shadow": {
+        "default": {
+          "offsetX": 0,
+          "offsetY": 6,
+          "blur": 20,
+          "color": "rgba(0, 0, 0, 0.25)"
+        }
+      }
+    },
+    "components": {
+      "card": {
+        "background": "#1E293B",
+        "borderRadius": 16,
+        "elevation": "medium"
+      },
+      "buttonPrimary": {
+        "backgroundColor": "#38BDF8",
+        "textColor": "#000000",
+        "radius": 10,
+        "fontWeight": "600"
+      },
+      "buttonSecondary": {
+        "backgroundColor": "#1E293B",
+        "textColor": "#FFFFFF",
+        "border": "1px solid #334155"
+      },
+      "navigationBar": {
+        "style": "pill",
+        "backgroundColor": "#0F172A",
+        "iconTint": "#94A3B8",
+        "activeTint": "#38BDF8"
+      },
+      "dashboard": {
+        "balanceCard": {
+          "titleSize": 16,
+          "valueSize": 32,
+          "valueColor": "#FFFFFF",
+          "percentageColorPositive": "#22C55E",
+          "percentageColorNegative": "#EF4444"
+        },
+        "actionButtons": {
+          "layout": "grid",
+          "icons": [
+            "buy",
+            "sell",
+            "send",
+            "receive"
+          ],
+          "iconSize": 24,
+          "labelSize": 12
+        },
+        "assetCards": {
+          "chartLine": true,
+          "icon": true,
+          "value": true
+        }
+      },
+      "onboarding": {
+        "illustration": "3D tokens, floating",
+        "headline": "Start Your Crypto Journey",
+        "buttons": [
+          "Sign Up",
+          "Log In"
+        ],
+        "buttonLayout": "stacked"
+      }
+    },
+    "animations": {
+      "pageTransitions": "fade + slide",
+      "buttonPress": "scaleDown",
+      "chartUpdate": "smoothLineDraw"
+    },
+    "icons": {
+      "style": "neumorphic 3D / minimalist glyphs",
+      "usage": {
+        "buy": "plus-circle",
+        "sell": "minus-circle",
+        "send": "arrow-up",
+        "receive": "arrow-down",
+        "dashboard": "home",
+        "analytics": "bar-chart"
+      }
+    }
+  }
+}
