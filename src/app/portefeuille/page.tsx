@@ -180,8 +180,12 @@ export default function PortefeuillePage() {
                     setBetActionMsg("");
                     // Vérifie le solde des DEUX joueurs
                     const { data: { user: authUser } } = await supabase.auth.getUser();
+                    if (!authUser) throw new Error("Utilisateur non authentifié");
                     const { data: user2 } = await supabase
-                      .from("users").select("uid, solde").eq("uid", authUser.id).single();
+                      .from("users")
+                      .select("uid, solde")
+                      .eq("uid", authUser.id)
+                      .single();
                     const { data: user1 } = await supabase
                       .from("users").select("uid, solde").eq("uid", pari.joueur1_uid).single();
                     if (!user2 || user2.solde < pari.montant) {
