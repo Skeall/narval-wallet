@@ -80,7 +80,7 @@ export default function PariPage() {
         joueur1_uid: currentUser.uid,
         joueur2_uid: selectedOpponent,
         montant,
-        statut: "en attente",
+        statut: "en attente de validation",
         gagnant_uid: null,
         date: new Date().toISOString(),
         ...(description ? { description: description.trim() } : {}),

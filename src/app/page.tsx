@@ -3,8 +3,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { supabase } from "@/utils/supabaseClient";
+import ParisEnCoursHomeSection from "./ParisEnCoursHomeSection";
 
 interface UserData {
+  uid: string;
   pseudo: string;
   solde: number;
   role: string;
@@ -28,7 +30,7 @@ export default function Home() {
       // On suppose que le profil est dans la table "users" (clé: id = user.id)
       const { data, error } = await supabase
         .from("users")
-        .select("pseudo, solde, role, avatar")
+        .select("uid, pseudo, solde, role, avatar")
         .eq("uid", user.id)
         .single();
       if (!data || error) {
@@ -53,6 +55,7 @@ export default function Home() {
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#0B0F1C] text-white">
       <div className="w-full flex flex-col items-center justify-center min-h-screen">
         <div className="w-full max-w-[430px] mx-auto flex flex-col gap-6 pt-8">
+
           {/* Header */}
           <div className="flex items-center justify-between w-full px-2">
             <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-sky-400 to-blue-800 flex items-center justify-center overflow-hidden border-2 border-[#232B42]">
@@ -122,6 +125,10 @@ export default function Home() {
               </div>
             </div>
           </div>
+          {/* Section Paris en cours (en bas de la home) */}
+          {user && (
+            <ParisEnCoursHomeSection userId={user.uid} userPseudo={user.pseudo} />
+          )}
         </div>
       </div>
     </div>
