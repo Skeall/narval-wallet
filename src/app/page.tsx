@@ -28,27 +28,42 @@ export default function Home() {
       // Récupère la dernière transaction transfert reçue
       const { data: txs, error } = await supabase
         .from("transactions")
-        .select("id, from, montant, date, users!transactions_from_fkey(pseudo)")
+        .select("id, from, montant, date")
         .eq("type", "transfert")
         .eq("to", user.uid)
         .order("date", { ascending: false })
         .limit(1);
-      if (error || !txs || txs.length === 0) return;
+      if (error || !txs || txs.length === 0) {
+        console.log("[Narval][Toast] Aucune transaction de transfert reçue trouvée", { error, txs });
+        return;
+      }
       const lastTx = txs[0];
       const localKey = `last_seen_transfer_id_${user.uid}`;
       const lastSeenId = localStorage.getItem(localKey);
+      console.log("[Narval][Toast] Transaction reçue:", lastTx);
+      console.log("[Narval][Toast] lastSeenId:", lastSeenId);
       if (lastTx.id && lastTx.id.toString() !== lastSeenId) {
-        // Affiche toast
-        const pseudo = Array.isArray(lastTx.users) && lastTx.users.length > 0
-  ? lastTx.users[0].pseudo
-  : "Un joueur";
+        // Récupère le pseudo de l'expéditeur via une requête séparée
+        let pseudo = "Un joueur";
+        try {
+          const { data: expData } = await supabase
+            .from("users")
+            .select("pseudo")
+            .eq("uid", lastTx.from)
+            .single();
+          pseudo = expData?.pseudo || "Un joueur";
+        } catch (e) { /* fallback "Un joueur" */ }
         setTransferToastMsg(`🎉 ${pseudo} t’a envoyé ₦${lastTx.montant} Narvals !`);
         setShowTransferToast(true);
+        console.log("[Narval][Toast] Affichage de la notification toast !");
         // Après 5s, masque le toast et marque comme vu
         setTimeout(() => {
           setShowTransferToast(false);
           localStorage.setItem(localKey, lastTx.id.toString());
+          console.log("[Narval][Toast] Toast masqué, id marqué comme vu:", lastTx.id);
         }, 5000);
+      } else {
+        console.log("[Narval][Toast] Pas de toast : transaction déjà vue ou id manquant.");
       }
     };
     checkLastTransfer();
