@@ -39,7 +39,9 @@ export default function Home() {
       const lastSeenId = localStorage.getItem(localKey);
       if (lastTx.id && lastTx.id.toString() !== lastSeenId) {
         // Affiche toast
-        const pseudo = lastTx.users?.pseudo || "Un joueur";
+        const pseudo = Array.isArray(lastTx.users) && lastTx.users.length > 0
+  ? lastTx.users[0].pseudo
+  : "Un joueur";
         setTransferToastMsg(`🎉 ${pseudo} t’a envoyé ₦${lastTx.montant} Narvals !`);
         setShowTransferToast(true);
         // Après 5s, masque le toast et marque comme vu
