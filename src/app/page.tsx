@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 
 import { supabase } from "@/utils/supabaseClient";
 import ParisEnCoursHomeSection from "./ParisEnCoursHomeSection";
+import ToastNotification from "./ToastNotification";
 
 interface UserData {
   uid: string;
@@ -16,7 +17,40 @@ interface UserData {
 export default function Home() {
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showTransferToast, setShowTransferToast] = useState(false);
+  const [transferToastMsg, setTransferToastMsg] = useState("");
   const router = useRouter();
+
+  // Toast transfert reçu (notification visuelle)
+  useEffect(() => {
+    if (!user) return;
+    const checkLastTransfer = async () => {
+      // Récupère la dernière transaction transfert reçue
+      const { data: txs, error } = await supabase
+        .from("transactions")
+        .select("id, from, montant, date, users!transactions_from_fkey(pseudo)")
+        .eq("type", "transfert")
+        .eq("to", user.uid)
+        .order("date", { ascending: false })
+        .limit(1);
+      if (error || !txs || txs.length === 0) return;
+      const lastTx = txs[0];
+      const localKey = `last_seen_transfer_id_${user.uid}`;
+      const lastSeenId = localStorage.getItem(localKey);
+      if (lastTx.id && lastTx.id.toString() !== lastSeenId) {
+        // Affiche toast
+        const pseudo = lastTx.users?.pseudo || "Un joueur";
+        setTransferToastMsg(`🎉 ${pseudo} t’a envoyé ₦${lastTx.montant} Narvals !`);
+        setShowTransferToast(true);
+        // Après 5s, masque le toast et marque comme vu
+        setTimeout(() => {
+          setShowTransferToast(false);
+          localStorage.setItem(localKey, lastTx.id.toString());
+        }, 5000);
+      }
+    };
+    checkLastTransfer();
+  }, [user]);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -53,6 +87,10 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#0B0F1C] text-white">
+      {/* Toast transfert reçu */}
+      {showTransferToast && (
+        <ToastNotification message={transferToastMsg} onClose={() => setShowTransferToast(false)} />
+      )}
       <div className="w-full flex flex-col items-center justify-center min-h-screen">
         <div className="w-full max-w-[430px] mx-auto flex flex-col gap-6 pt-8">
 
