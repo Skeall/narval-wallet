@@ -21,7 +21,10 @@ interface EnchereHistorique {
   date: string;
 }
 
+import { useRouter } from "next/navigation";
+
 export default function EncherePage() {
+  const router = useRouter();
   const [avatarsByUid, setAvatarsByUid] = useState<Record<string, string>>({});
   const [enchere, setEnchere] = useState<Enchere|null>(null);
   const [historique, setHistorique] = useState<EnchereHistorique[]>([]);
@@ -259,13 +262,22 @@ export default function EncherePage() {
 
 
   return (
-    <div className="flex flex-col items-center min-h-screen bg-gray-900 py-8 px-2">
-      <div className="bg-gray-800 rounded-lg shadow-md w-full max-w-lg p-6 mt-6 flex flex-col items-center">
-        {/* LOT EN JEU */}
-        <div className="flex flex-col items-center mb-6">
-  
-          <img src={enchere?.lot_image || "/booster.png"} alt="Booster" className="w-32 h-32 object-contain mb-2 rounded shadow" />
-          <div className="text-xl font-bold text-cyan-400">{enchere?.lot_title || "Booster X1"}</div>
+    <div className="flex flex-col items-center min-h-screen bg-slate-900 py-8 px-2 md:px-0">
+      {/* Bouton retour mobile friendly */}
+      <button
+        onClick={() => router.push("/")}
+        className="absolute top-3 left-3 z-20 bg-slate-700/80 hover:bg-slate-600/90 rounded-full p-2 shadow transition focus:outline-none focus:ring-2 focus:ring-cyan-400 flex items-center justify-center"
+        style={{ width: 40, height: 40 }}
+        aria-label="Retour à l'accueil"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 text-cyan-300">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+        </svg>
+      </button>
+      <div className="w-full max-w-md mx-auto bg-slate-800 rounded-2xl shadow-2xl p-4 md:p-8 flex flex-col gap-6 relative">
+        <div className="flex flex-col items-center gap-2">
+          <img src={`/${enchere?.lot_image || "booster homepage.png"}`} alt={enchere?.lot_title} className="w-28 h-28 object-contain rounded-2xl shadow-2xl drop-shadow-xl bg-slate-800" />
+          <div className="text-xl md:text-2xl font-bold text-cyan-200 text-center mt-2">{enchere?.lot_title || "Booster X1"}</div>
           <div className="text-gray-300 text-center mt-1">{enchere?.lot_description || "Un paquet de cartes contenant 5 cartes ✨"}</div>
         </div>
         {/* ENCHERE EN COURS */}

@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabaseClient";
 import EnCoursBetsSection from "./EnCoursBetsSection";
 import PendingByMeBetsSection from "./PendingByMeBetsSection";
@@ -49,6 +50,7 @@ const badgeColors: Record<string, string> = {
 };
 
 export default function PortefeuillePage() {
+  const router = useRouter();
   const [pendingBets, setPendingBets] = useState<any[]>([]);
   const [betActionMsg, setBetActionMsg] = useState("");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -174,11 +176,37 @@ export default function PortefeuillePage() {
   }, []);
 
   if (loading) {
-    return <div className="flex min-h-screen items-center justify-center bg-[#0B0F1C] text-white">Chargement...</div>;
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#0B0F1C] py-8 relative">
+        {/* Bouton retour mobile friendly */}
+        <button
+          onClick={() => router.push("/")}
+          className="absolute top-3 left-3 z-20 bg-slate-700/80 hover:bg-slate-600/90 rounded-full p-2 shadow transition focus:outline-none focus:ring-2 focus:ring-cyan-400 flex items-center justify-center"
+          style={{ width: 40, height: 40 }}
+          aria-label="Retour à l'accueil"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 text-cyan-300">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+          </svg>
+        </button>
+        <div className="flex min-h-screen items-center justify-center bg-[#0B0F1C] text-white">Chargement...</div>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-[#0B0F1C] text-white flex flex-col items-center pt-20">
+    <div className="min-h-screen bg-[#0B0F1C] text-white flex flex-col items-center pt-20 relative">
+      {/* Bouton retour mobile friendly */}
+      <button
+        onClick={() => router.push("/")}
+        className="absolute top-3 left-3 z-20 bg-slate-700/80 hover:bg-slate-600/90 rounded-full p-2 shadow transition focus:outline-none focus:ring-2 focus:ring-cyan-400 flex items-center justify-center"
+        style={{ width: 40, height: 40 }}
+        aria-label="Retour à l'accueil"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 text-cyan-300">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+        </svg>
+      </button>
 
       {/* Section Paris en cours */}
       {user && (
@@ -186,10 +214,10 @@ export default function PortefeuillePage() {
       )}
       {/* Bloc Paris à valider */}
       {pendingBets.length > 0 && (
-        <div className="w-full max-w-xl mb-8">
-          <h2 className="text-xl font-bold mb-4 text-center text-cyan-400">Paris à valider (reçus)</h2>
+        <div className="w-full max-w-xl">
+          <h2 className="text-xl font-bold mb-0 text-center text-cyan-400">Paris à valider (reçus)</h2>
           {pendingBets.map((pari) => (
-            <div key={pari.id} className="bg-blue-900 border border-blue-700 rounded-xl p-6 mb-4 flex flex-col items-center shadow-lg animate-fadeIn">
+            <div key={pari.id} className="bg-blue-900 border border-blue-700 rounded-xl p-6 mb-0 flex flex-col items-center shadow-lg animate-fadeIn">
               <div className="flex items-center gap-2 mb-2">
                 <span className="bg-blue-600 text-white text-xs font-semibold px-2 py-1 rounded">Nouveau pari à valider</span>
               </div>
@@ -252,7 +280,7 @@ export default function PortefeuillePage() {
         <div className="mb-6 text-center text-lg">
           Solde&nbsp;: <span className="font-bold text-sky-300">{solde} Narvals</span>
         </div>
-        <h2 className="text-xl font-semibold mb-4">Dernières transactions</h2>
+        <h2 className="text-xl font-semibold mb-0">Dernières transactions</h2>
         {errorMsg && (
           <div className="text-center text-red-400 mb-2">{errorMsg}</div>
         )}

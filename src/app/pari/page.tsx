@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabaseClient";
 
 interface User {
@@ -9,6 +10,7 @@ interface User {
 }
 
 export default function PariPage() {
+  const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User|null>(null);
   const [selectedOpponent, setSelectedOpponent] = useState<string>("");
@@ -102,7 +104,18 @@ export default function PariPage() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 relative">
+      {/* Bouton retour mobile friendly */}
+      <button
+        onClick={() => router.push("/")}
+        className="absolute top-3 left-3 z-20 bg-slate-700/80 hover:bg-slate-600/90 rounded-full p-2 shadow transition focus:outline-none focus:ring-2 focus:ring-cyan-400 flex items-center justify-center"
+        style={{ width: 40, height: 40 }}
+        aria-label="Retour à l'accueil"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 text-cyan-300">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+        </svg>
+      </button>
       <div className="bg-gray-800 rounded-lg p-8 shadow-md w-full max-w-md mt-12">
         <h1 className="text-2xl font-bold text-center text-cyan-400 mb-6">Lancer un pari</h1>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">

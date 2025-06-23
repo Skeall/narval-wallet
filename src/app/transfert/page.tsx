@@ -89,7 +89,18 @@ export default function TransfertPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#0B0F1C] px-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#0B0F1C] px-4 relative">
+      {/* Bouton retour mobile friendly */}
+      <button
+        onClick={() => router.push("/")}
+        className="absolute top-3 left-3 z-20 bg-slate-700/80 hover:bg-slate-600/90 rounded-full p-2 shadow transition focus:outline-none focus:ring-2 focus:ring-cyan-400 flex items-center justify-center"
+        style={{ width: 40, height: 40 }}
+        aria-label="Retour à l'accueil"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 text-cyan-300">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+        </svg>
+      </button>
       <form onSubmit={handleSubmit} className="bg-[#181E2C] rounded-xl shadow-lg p-8 w-full max-w-md flex flex-col gap-6">
         <h1 className="text-2xl font-bold text-sky-400 mb-2 text-center">Transférer des Narvals</h1>
         {/* Destinataire */}

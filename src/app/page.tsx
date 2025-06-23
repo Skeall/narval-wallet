@@ -169,7 +169,7 @@ export default function Home() {
               {/* Booster image */}
               <div className="w-16 h-24 rounded-xl overflow-hidden flex-shrink-0 bg-gradient-to-tr from-blue-600 to-sky-400 flex items-center justify-center mr-4">
                 <img
-                  src="https://cdn.pixabay.com/photo/2017/01/31/13/14/booster-2028241_1280.png"
+                  src="/card.png"
                   alt="Booster"
                   className="object-cover w-full h-full"
                 />

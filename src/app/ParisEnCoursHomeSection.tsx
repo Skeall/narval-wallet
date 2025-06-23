@@ -86,18 +86,7 @@ export default function ParisEnCoursHomeSection({ userId, userPseudo, refresh }:
 
   if (loading) return null;
 
-  // Debug : affiche userId et bets si aucun pari trouvé
-  if (bets.length === 0) {
-    return (
-      <div className="w-full max-w-[430px] mx-auto mt-6 text-xs text-yellow-300 bg-yellow-950 p-4 rounded">
-        <div><b>Debug ParisEnCoursHomeSection</b></div>
-        <div>userId reçu : <span className="font-mono">{userId}</span></div>
-        <div>userPseudo reçu : <span className="font-mono">{userPseudo}</span></div>
-        <div>Résultat bets : <pre className="whitespace-pre-wrap">{JSON.stringify(bets, null, 2)}</pre></div>
-        <div>Si tu vois ça, c'est que la requête ne remonte aucun pari "en cours" où tu es joueur1 ou joueur2.</div>
-      </div>
-    );
-  }
+  if (bets.length === 0) return <></>;
 
   return (
     <div className="w-full max-w-[480px] mx-auto mt-8 font-inter">
