@@ -27,6 +27,7 @@ export default function RootLayout({
     <html lang="fr">
       <head>
         <link rel="icon" href="/favicon.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/favicon2.png" />
         <title>Narval</title>
         <meta name="description" content="Application de gestion de portefeuille et paris entre amis." />
       </head>
