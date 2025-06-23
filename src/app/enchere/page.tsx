@@ -128,7 +128,9 @@ export default function EncherePage() {
     };
     updateTimer();
     intervalRef.current = setInterval(updateTimer, 1000);
-    return () => intervalRef.current && clearInterval(intervalRef.current);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
   }, [enchere?.deadline]);
 
   // Gestion surenchère
