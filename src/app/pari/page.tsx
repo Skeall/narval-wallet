@@ -119,14 +119,32 @@ export default function PariPage() {
             ))}
           </select>
           <label className="text-gray-200">Montant</label>
-          <input
-            type="number"
-            className="p-2 rounded bg-gray-700 text-gray-100"
-            value={montant}
-            min={1}
-            onChange={e => setMontant(Number(e.target.value))}
-            required
-          />
+          <div className="flex flex-col items-center gap-2 mb-2">
+            <div className="text-3xl font-bold text-cyan-300 mb-2">₦{montant}</div>
+            <div className="flex items-center w-full gap-2">
+              <button
+                type="button"
+                className="bg-gray-700 text-cyan-400 rounded-full w-8 h-8 flex items-center justify-center text-xl hover:bg-gray-600"
+                onClick={() => setMontant(m => Math.max(1, m - 1))}
+                aria-label="Diminuer"
+              >-</button>
+              <input
+                type="range"
+                min={1}
+                max={currentUser ? currentUser.solde : 100}
+                value={montant}
+                onChange={e => setMontant(Number(e.target.value))}
+                className="flex-1 accent-cyan-400"
+              />
+              <button
+                type="button"
+                className="bg-gray-700 text-cyan-400 rounded-full w-8 h-8 flex items-center justify-center text-xl hover:bg-gray-600"
+                onClick={() => setMontant(m => Math.min(currentUser ? currentUser.solde : 100, m + 1))}
+                aria-label="Augmenter"
+              >+</button>
+            </div>
+            <div className="text-xs text-gray-400">Max : ₦{currentUser ? currentUser.solde : 100}</div>
+          </div>
           <label className="flex items-center justify-between text-gray-200 mt-2">
             <span>📝 Sujet du pari / condition de victoire</span>
             <span className="ml-2 bg-gray-600 text-xs text-gray-200 px-2 py-0.5 rounded-full">facultatif</span>

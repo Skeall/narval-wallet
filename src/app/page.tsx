@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 
 import { supabase } from "@/utils/supabaseClient";
 import ParisEnCoursHomeSection from "./ParisEnCoursHomeSection";
+import EnchereDuMoisHomeSection from "./EnchereDuMoisHomeSection";
 import ToastNotification from "./ToastNotification";
 
 interface UserData {
@@ -154,6 +155,14 @@ export default function Home() {
               <span className="font-semibold text-base">Parier</span>
             </button>
           </div>
+          {/* Bloc Enchère du mois */}
+<div className="w-full flex items-center justify-center mb-2 mt-2">
+  <h2 className="font-bold text-lg md:text-xl text-amber-400 drop-shadow text-center tracking-tight select-none">
+    🧨 Enchère du mois
+  </h2>
+</div>
+<EnchereDuMoisHomeSection />
+
           {/* Pot commun en bas */}
           <div className="w-full mt-10">
             <div className="flex items-center bg-[#232B42] rounded-2xl p-4 shadow-lg">
