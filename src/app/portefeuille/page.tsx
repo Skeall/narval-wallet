@@ -2,8 +2,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabaseClient";
-import EnCoursBetsSection from "./EnCoursBetsSection";
-import PendingByMeBetsSection from "./PendingByMeBetsSection";
+// import EnCoursBetsSection from "./EnCoursBetsSection";
+// import PendingByMeBetsSection from "./PendingByMeBetsSection";
 import PariTransactionItem from "./PariTransactionItem";
 
 // DEBUG: Affiche la variable d'environnement Supabase côté front
@@ -208,73 +208,97 @@ export default function PortefeuillePage() {
         </svg>
       </button>
 
-      {/* Section Paris en cours */}
-      {user && (
-        <EnCoursBetsSection user={user} refreshData={fetchData} />
-      )}
       {/* Bloc Paris à valider */}
       {pendingBets.length > 0 && (
         <div className="w-full max-w-xl mb-8">
-          <h2 className="text-xl font-bold mb-4 text-center text-cyan-400">Paris à valider (reçus)</h2>
-          {pendingBets.map((pari) => (
-            <div key={pari.id} className="bg-blue-900 border border-blue-700 rounded-xl p-6 mb-4 flex flex-col items-center shadow-lg animate-fadeIn">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="bg-blue-600 text-white text-xs font-semibold px-2 py-1 rounded">Nouveau pari à valider</span>
-              </div>
-              <div className="text-lg mb-2">{pari.joueur1?.pseudo || "Un joueur"} te propose un pari de <span className="font-bold text-cyan-300">₦{pari.montant}</span></div>
-              {pari.description && (
-                <div className="mb-2 text-xs italic text-blue-200">Sujet : {pari.description}</div>
-              )}
-              <div className="flex gap-4 mt-2">
-                <button
-                  className="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-2 px-6 rounded-lg shadow transition focus:outline-none focus:ring-2 focus:ring-cyan-400"
-                  onClick={async () => {
-                    setBetActionMsg("");
-                    // Vérifie le solde des DEUX joueurs
-                    const { data: { user: authUser } } = await supabase.auth.getUser();
-                    if (!authUser) throw new Error("Utilisateur non authentifié");
-                    const { data: user2 } = await supabase
-                      .from("users")
-                      .select("uid, solde")
-                      .eq("uid", authUser.id)
-                      .single();
-                    const { data: user1 } = await supabase
-                      .from("users").select("uid, solde").eq("uid", pari.joueur1_uid).single();
-                    if (!user2 || user2.solde < pari.montant) {
-                      setBetActionMsg("Solde insuffisant pour accepter ce pari (toi).");
-                      return;
-                    }
-                    if (!user1 || user1.solde < pari.montant) {
-                      setBetActionMsg("Solde insuffisant pour l'autre joueur. Pari annulé.");
-                      await supabase.from("paris").update({ statut: "annulé" }).eq("id", pari.id);
+          <h2 className="text-2xl font-extrabold mb-5 text-center text-cyan-300 tracking-tight drop-shadow-glow">Paris à valider (reçus)</h2>
+          {/* Affichage des invitations à accepter/refuser uniquement */}
+          <div className="flex flex-col gap-6 mb-8">
+            {pendingBets.map((pari) => (
+              <div
+                key={pari.id}
+                className="bg-gradient-to-br from-blue-900/80 via-blue-800/70 to-cyan-900/80 border border-blue-400/30 rounded-2xl p-6 shadow-xl backdrop-blur-md flex flex-col items-center animate-fadeIn hover:scale-[1.025] transition-transform duration-200 mb-4"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="inline-flex items-center gap-1 bg-blue-700/80 text-cyan-100 text-xs font-semibold px-3 py-1 rounded-full shadow-md">
+                    <span className="material-symbols-rounded text-base align-middle">hourglass_top</span>
+                    Nouveau pari à valider
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-600 to-blue-700 flex items-center justify-center text-lg font-bold text-white shadow">
+                    {(pari.joueur1?.pseudo || 'U')[0].toUpperCase()}
+                  </div>
+                  <span className="text-base text-cyan-100 font-medium">
+                    <span className="font-bold text-cyan-300">{pari.joueur1?.pseudo || "Un joueur"}</span> te propose un pari de
+                  </span>
+                  <span className="text-xl font-extrabold text-cyan-300">₦{pari.montant}</span>
+                </div>
+                {pari.description && (
+                  <div className="mb-3 px-4 py-2 rounded-xl bg-blue-950/60 text-cyan-200 text-sm font-medium italic text-center border border-cyan-900/30 shadow-inner">
+                    <span className="material-symbols-rounded align-middle mr-1 text-cyan-300 text-base">chat_bubble</span>
+                    {pari.description}
+                  </div>
+                )}
+                <div className="flex gap-4 mt-2 w-full justify-center">
+                  <button
+                    className="group/button bg-gradient-to-r from-cyan-500/90 to-blue-500/80 hover:from-cyan-400 hover:to-blue-400 text-white font-bold py-2 px-8 rounded-full shadow-lg shadow-cyan-900/20 border border-cyan-400/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/80 transition-all duration-150 active:scale-95 select-none flex items-center gap-2 text-base"
+                    title="Accepter le pari"
+                    onClick={async () => {
+                      setBetActionMsg("");
+                      // Vérifie le solde des deux joueurs
+                      const { data: user2 } = await supabase
+                        .from("users")
+                        .select("uid, solde")
+                        .eq("uid", user?.uid)
+                        .single();
+                      const { data: user1 } = await supabase
+                        .from("users")
+                        .select("uid, solde")
+                        .eq("uid", pari.joueur1_uid)
+                        .single();
+                      if (!user2 || user2.solde < pari.montant) {
+                        setBetActionMsg("Solde insuffisant pour accepter ce pari (toi).");
+                        return;
+                      }
+                      if (!user1 || user1.solde < pari.montant) {
+                        setBetActionMsg("Solde insuffisant pour l'autre joueur. Pari annulé.");
+                        await supabase.from("paris").update({ statut: "annulé" }).eq("id", pari.id);
+                        setPendingBets(pendingBets.filter(b => b.id !== pari.id));
+                        return;
+                      }
+                      // Débite les DEUX joueurs
+                      await supabase.from("users").update({ solde: user1.solde - pari.montant }).eq("uid", user1.uid);
+                      await supabase.from("users").update({ solde: user2.solde - pari.montant }).eq("uid", user2.uid);
+                      await supabase.from("paris").update({ statut: "en cours" }).eq("id", pari.id);
+                      setBetActionMsg("Pari accepté ! En attente de validation de l'admin.");
                       setPendingBets(pendingBets.filter(b => b.id !== pari.id));
-                      return;
-                    }
-                    // Débite les DEUX joueurs
-                    await supabase.from("users").update({ solde: user1.solde - pari.montant }).eq("uid", user1.uid);
-                    await supabase.from("users").update({ solde: user2.solde - pari.montant }).eq("uid", user2.uid);
-                    await supabase.from("paris").update({ statut: "en cours" }).eq("id", pari.id);
-                    setBetActionMsg("Pari accepté ! En attente de validation de l'admin.");
-                    setPendingBets(pendingBets.filter(b => b.id !== pari.id));
-                  }}
-                >Accepter</button>
-                <button
-                  className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg shadow transition focus:outline-none focus:ring-2 focus:ring-red-400"
-                  onClick={async () => {
-                    setBetActionMsg("");
-                    await supabase.from("paris").update({ statut: "refusé" }).eq("id", pari.id);
-                    setBetActionMsg("Pari refusé.");
-                    setPendingBets(pendingBets.filter(b => b.id !== pari.id));
-                  }}
-                >Refuser</button>
+                    }}
+                  >
+                    <span className="material-symbols-rounded text-lg">check_circle</span>
+                    Accepter
+                  </button>
+                  <button
+                    className="group/button bg-gradient-to-r from-red-600/90 to-red-800/80 hover:from-red-500 hover:to-red-700 text-white font-bold py-2 px-8 rounded-full shadow-lg shadow-red-900/20 border border-red-400/30 focus:outline-none focus:ring-2 focus:ring-red-400/80 transition-all duration-150 active:scale-95 select-none flex items-center gap-2 text-base"
+                    title="Refuser le pari"
+                    onClick={async () => {
+                        setBetActionMsg("");
+                        await supabase.from("paris").update({ statut: "refusé" }).eq("id", pari.id);
+                        setBetActionMsg("Pari refusé.");
+                        setPendingBets(pendingBets.filter(b => b.id !== pari.id));
+                      }}
+                  >
+                    <span className="material-symbols-rounded text-lg">cancel</span>
+                    Refuser
+                  </button>
+                </div>
+                {betActionMsg && <div className="mt-4 text-center text-cyan-200 text-sm">{betActionMsg}</div>}
               </div>
-              {betActionMsg && <div className="mt-4 text-center text-cyan-200 text-sm">{betActionMsg}</div>}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
-
-
+      {/* Solde et transactions */}
       <div className="bg-[#1C2233] rounded-xl p-8 w-full max-w-xl shadow-lg mt-4">
         <h1 className="text-3xl font-bold mb-2 text-center text-sky-400">Portefeuille</h1>
         <div className="mb-6 text-center text-lg">
@@ -286,27 +310,20 @@ export default function PortefeuillePage() {
         )}
         {transactions.length > 0 && (
           <ul className="space-y-3">
-            {transactions
-              .filter((tx) => {
-                // Affiche toutes les transactions sauf les "pari" qui ne concernent pas l'utilisateur ou qui ne sont pas terminées
-                if (tx.type !== "pari") return true;
-                // On n'affiche que si la transaction est liée à un gain ou une perte (c'est-à-dire une fois le gagnant défini, donc transaction créée)
-                // On suppose que la transaction est créée uniquement pour le gagnant, donc si l'utilisateur est destinataire
-                return tx.to === user?.uid;
-              })
-              .map((tx) => (
-                <PariTransactionItem
-                  key={tx.id}
-                  tx={tx}
-                  user={user}
-                  badgeColors={badgeColors}
-                  typeLabels={typeLabels}
-                  refreshData={fetchData}
-                />
-              ))}
+            {transactions.map((tx) => (
+              <PariTransactionItem
+                key={tx.id}
+                tx={tx}
+                user={user}
+                badgeColors={badgeColors}
+                typeLabels={typeLabels}
+                refreshData={fetchData}
+              />
+            ))}
           </ul>
         )}
       </div>
     </div>
   );
 }
+

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/utils/supabaseClient";
+import BetAcceptCard from "./components/BetAcceptCard";
 
 interface ParisEnCoursHomeSectionProps {
   userId: string;
@@ -103,6 +104,55 @@ export default function ParisEnCoursHomeSection({ userId, userPseudo, refresh }:
           const adversaire = isJoueur1 ? (pari.joueur2?.pseudo || "?") : (pari.joueur1?.pseudo || "?");
           const canSetWinner =
             pari.statut === "en cours" && (isJoueur1 || isJoueur2);
+
+          // NOUVEAU : Bloc Acceptation pour joueur2
+          if (isJoueur2 && (pari.statut === "en attente" || pari.statut === "en attente de validation")) {
+            return (
+              <BetAcceptCard
+                key={pari.id}
+                pari={pari}
+                joueur1Pseudo={pari.joueur1?.pseudo || "Un joueur"}
+                onAccept={async () => {
+                  // Action d'acceptation réelle : update Supabase
+                  // 1. Vérifie le solde des deux joueurs
+                  const { data: user2 } = await supabase
+                    .from("users")
+                    .select("uid, solde")
+                    .eq("uid", userId)
+                    .single();
+                  const { data: user1 } = await supabase
+                    .from("users")
+                    .select("uid, solde")
+                    .eq("uid", pari.joueur1_uid)
+                    .single();
+                  if (!user2 || user2.solde < pari.montant) {
+                    setActionMsg("Solde insuffisant pour accepter ce pari (toi).");
+                    return;
+                  }
+                  if (!user1 || user1.solde < pari.montant) {
+                    setActionMsg("Solde insuffisant pour l'autre joueur. Pari annulé.");
+                    await supabase.from("paris").update({ statut: "annulé" }).eq("id", pari.id);
+                    setBets(bets.filter(b => b.id !== pari.id));
+                    return;
+                  }
+                  // Débite les DEUX joueurs
+                  await supabase.from("users").update({ solde: user1.solde - pari.montant }).eq("uid", user1.uid);
+                  await supabase.from("users").update({ solde: user2.solde - pari.montant }).eq("uid", user2.uid);
+                  await supabase.from("paris").update({ statut: "en cours" }).eq("id", pari.id);
+                  // Met à jour localement le pari comme 'en cours' pour affichage immédiat
+                  setBets(bets.map(b => b.id === pari.id ? { ...b, statut: "en cours" } : b));
+                  setActionMsg("Pari accepté ! En attente de validation de l'admin.");
+                }}
+                onRefuse={async () => {
+                  // Action de refus (à brancher sur la vraie logique si besoin)
+                  setBets(bets.filter(b => b.id !== pari.id));
+                }}
+                actionMsg={""}
+              />
+            );
+          }
+
+          // Bloc classique sinon
           return (
             <div
               key={pari.id}
