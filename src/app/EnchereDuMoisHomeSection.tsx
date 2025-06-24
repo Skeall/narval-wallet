@@ -132,13 +132,13 @@ export default function EnchereDuMoisHomeSection() {
   return (
     <div className="w-full mb-6 rounded-2xl p-0 shadow-xl bg-white/5 backdrop-blur-md border border-white/10 flex flex-col items-stretch">
       {/* Timer en haut, séparé */}
-      <div className={`w-full flex flex-col items-center justify-center py-3 px-4 rounded-t-2xl bg-white/10 backdrop-blur-lg border-b border-white/10 shadow-inner`}> 
+      {/* Bloc haut : statut terminé */}
+      <div className={`w-full flex flex-col items-center justify-center py-3 px-4 rounded-t-2xl bg-white/10 backdrop-blur-lg border-b border-white/10 shadow-inner`}>
         <span className="flex items-center gap-2 text-2xl md:text-3xl font-extrabold text-white drop-shadow-lg tracking-tight">
-          <span className="text-yellow-300">⏳</span> {timeLeft}
+          <span className="text-yellow-300">🎉</span> Terminée
         </span>
-        <span className="text-xs md:text-sm text-gray-400 mt-1 uppercase tracking-widest">Temps restant</span>
       </div>
-      {/* Bas du bloc : infos enchère, image, bouton */}
+      {/* Bas du bloc : uniquement image + bouton teasing */}
       <div className="flex flex-row items-center gap-4 w-full px-5 py-5">
         <div className="flex-shrink-0">
           <img
@@ -148,51 +148,13 @@ export default function EnchereDuMoisHomeSection() {
             style={{ background: "transparent" }}
           />
         </div>
-        <div className="flex-1 min-w-0 flex flex-col gap-2 justify-center">
-          {/* Ligne principale : avatar leader, pseudo, badge Leader, montant max */}
-          <div className="flex flex-row items-center gap-2 md:gap-3 min-w-0 flex-wrap">
-            {leader && (
-              <>
-                {leaderAvatar && (
-                  <img
-                    src={leaderAvatar}
-                    alt="Avatar leader"
-                    className="w-8 h-8 rounded-full border-2 border-green-400 shadow-sm bg-slate-700 object-cover"
-                    style={{ minWidth: 32, minHeight: 32 }}
-                  />
-                )}
-                <span className="truncate max-w-[80px] md:max-w-[120px] font-semibold text-green-100 text-base md:text-lg leading-tight">{leader.pseudo}</span>
-                <span className="bg-gradient-to-r from-green-500/80 to-green-700/80 px-2 py-0.5 rounded-lg text-green-50 shadow text-xs md:text-sm font-bold">Leader</span>
-                <span className="ml-2 text-yellow-300 font-extrabold text-base md:text-lg bg-yellow-300/10 px-2 py-0.5 rounded-lg shadow-sm">₦{bidders && bidders.length > 0 ? Math.max(...bidders.map(b => b.montant)) : (enchere?.current_bid || 0)}</span>
-              </>
-            )}
-          </div>
-          {/* Ligne second enchérisseur */}
-          {second && (
-            <div className="flex items-center gap-2 w-full">
-              <span className="bg-gray-700/80 text-gray-300 px-2 py-0.5 rounded-lg text-xs flex items-center gap-1 shadow-sm">
-                <span className="animate-pulse text-gray-400">Suivi de près par</span>
-                {secondAvatar && (
-                  <img
-                    src={secondAvatar}
-                    alt="Avatar second"
-                    className="w-5 h-5 rounded-full border border-gray-400 shadow-sm bg-slate-700 object-cover mx-1"
-                    style={{ minWidth: 20, minHeight: 20 }}
-                  />
-                )}
-                <span className="font-semibold text-gray-300 truncate max-w-[70px]">{second.pseudo}</span>
-                <span className="text-gray-400">avec</span>
-                <span className="font-bold text-yellow-300">₦{second.montant}</span>
-              </span>
-            </div>
-          )}
-          {/* Bouton full width */}
+        <div className="flex-1 min-w-0 flex flex-col gap-4 justify-center items-center">
           <button
-            className="mt-2 w-full bg-gradient-to-r from-amber-400/90 to-yellow-500/90 text-slate-900 font-bold text-base md:text-lg py-2 rounded-xl shadow-lg hover:from-yellow-300 hover:to-yellow-400 transition focus:outline-none focus:ring-2 focus:ring-yellow-400"
-            onClick={() => router.push("/enchere")}
-            aria-label="Voir l’enchère"
+            className="mt-2 w-full max-w-xs bg-gradient-to-r from-amber-400/90 to-yellow-500/90 text-slate-900 font-bold text-base md:text-lg py-3 rounded-xl shadow-lg hover:from-yellow-300 hover:to-yellow-400 transition focus:outline-none focus:ring-2 focus:ring-yellow-400 text-center"
+            onClick={() => router.push("/gagnant")}
+            aria-label="Découvrir le gagnant"
           >
-            Voir l’enchère →
+            🎁 Découvrir le gagnant →
           </button>
         </div>
       </div>

@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { useVictorySound } from "./VictorySoundProvider";
+import { useLooseSound } from "./LooseSoundProvider";
 import { supabase } from "@/utils/supabaseClient";
 import BetAcceptCard from "./components/BetAcceptCard";
 
@@ -9,6 +11,10 @@ interface ParisEnCoursHomeSectionProps {
 }
 
 export default function ParisEnCoursHomeSection({ userId, userPseudo, refresh }: ParisEnCoursHomeSectionProps) {
+  const playVictorySound = useVictorySound();
+  const playLooseSound = useLooseSound();
+  const audioRef = useRef<HTMLAudioElement>(null);
+
   // Définir le gagnant et distribuer les gains
   const handleSetWinner = async (pari: any, gagnantUid: string) => {
     setActionMsg(null);
@@ -90,7 +96,9 @@ export default function ParisEnCoursHomeSection({ userId, userPseudo, refresh }:
   if (bets.length === 0) return <></>;
 
   return (
-    <div className="w-full max-w-[480px] mx-auto mt-8 font-inter">
+    <>
+      <audio ref={audioRef} src="/pariaccept.mp3" preload="auto" />
+      <div className="w-full max-w-[480px] mx-auto mt-8 font-inter">
       {actionMsg && (
         <div className="mb-3 text-center text-xs text-green-200 bg-green-900/60 rounded-xl p-3 shadow-lg border border-green-700 animate-fadeIn">
           {actionMsg}
@@ -142,6 +150,11 @@ export default function ParisEnCoursHomeSection({ userId, userPseudo, refresh }:
                   // Met à jour localement le pari comme 'en cours' pour affichage immédiat
                   setBets(bets.map(b => b.id === pari.id ? { ...b, statut: "en cours" } : b));
                   setActionMsg("Pari accepté ! En attente de validation de l'admin.");
+                  // Play sound after success
+                  if (audioRef.current) {
+                    audioRef.current.currentTime = 0;
+                    audioRef.current.play().catch(() => {});
+                  }
                 }}
                 onRefuse={async () => {
                   // Action de refus (à brancher sur la vraie logique si besoin)
@@ -262,8 +275,10 @@ export default function ParisEnCoursHomeSection({ userId, userPseudo, refresh }:
                         onClick={async () => {
                           setLoading(true);
                           setActionMsg(null);
+                          // Joue le son immédiatement pour garantir le user gesture
+                          playVictorySound();
                           await handleSetWinner(pari, userId);
-                          setBets(bets.map(b => b.id === pari.id ? { ...b, showWinnerChoice: false } : b));
+                          setBets(bets.filter(b => b.id !== pari.id)); // Retire la carte après victoire
                           setLoading(false);
                         }}
                       >
@@ -276,8 +291,9 @@ export default function ParisEnCoursHomeSection({ userId, userPseudo, refresh }:
                           setLoading(true);
                           setActionMsg(null);
                           const adversaireId = pari.joueur1_uid === userId ? pari.joueur2_uid : pari.joueur1_uid;
+                          playLooseSound();
                           await handleSetWinner(pari, adversaireId);
-                          setBets(bets.map(b => b.id === pari.id ? { ...b, showWinnerChoice: false } : b));
+                          setBets(bets.filter(b => b.id !== pari.id));
                           setLoading(false);
                         }}
                       >
@@ -305,5 +321,6 @@ export default function ParisEnCoursHomeSection({ userId, userPseudo, refresh }:
         })}
       </div>
     </div>
+    </>
   );
 }

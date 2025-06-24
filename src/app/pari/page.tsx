@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { usePariSound, PariSoundProvider } from "../PariSoundProvider";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabaseClient";
 
@@ -9,7 +10,8 @@ interface User {
   solde: number;
 }
 
-export default function PariPage() {
+function PariPage() {
+  const playPariSound = usePariSound();
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User|null>(null);
@@ -45,63 +47,7 @@ export default function PariPage() {
     fetchUsers();
   }, []);
 
-  // Gestion du formulaire
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setMessage("");
-    if (!currentUser) return;
-    if (!selectedOpponent) {
-      setMessage("Choisissez un adversaire.");
-      return;
-    }
-    if (!Number.isInteger(montant) || montant <= 0) {
-      setMessage("Le montant doit être un entier positif.");
-      return;
-    }
-    if (montant > currentUser.solde) {
-      setMessage("Montant supérieur à votre solde.");
-      return;
-    }
-    setLoading(true);
-    // Créer la transaction (historique)
-    const { error: txError } = await supabase.from("transactions").insert([
-      {
-        type: "pari",
-        from: currentUser.uid,
-        to: selectedOpponent,
-        montant,
-        description: description
-          ? `Sujet : ${description}`
-          : `Pari lancé entre ${currentUser.pseudo} et ${users.find(u => u.uid === selectedOpponent)?.pseudo}`,
-        date: new Date().toISOString(),
-      },
-    ]);
-    // Créer l'entrée dans la table "paris"
-    const { error: pariError } = await supabase.from("paris").insert([
-      {
-        joueur1_uid: currentUser.uid,
-        joueur2_uid: selectedOpponent,
-        montant,
-        statut: "en attente de validation",
-        gagnant_uid: null,
-        date: new Date().toISOString(),
-        ...(description ? { description: description.trim() } : {}),
-      },
-    ]);
-    // Plus de débit ici : le solde du joueur 1 reste inchangé tant que le pari n'est pas accepté
-    if (txError || pariError) {
-      setMessage(
-        "Erreur lors de la création du pari: " +
-        (txError?.message || pariError?.message || "Veuillez réessayer.")
-      );
-    } else {
-      setMessage(`Pari lancé avec ${users.find(u => u.uid === selectedOpponent)?.pseudo} pour ₦${montant}` + (description ? `\n📝 Sujet : ${description}` : "") + ". En attente de réponse ou de validation.");
-      setMontant(0);
-      setSelectedOpponent("");
-      setDescription("");
-    }
-    setLoading(false);
-  };
+  
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 relative">
@@ -118,7 +64,7 @@ export default function PariPage() {
       </button>
       <div className="bg-gray-800 rounded-lg p-8 shadow-md w-full max-w-md mt-12">
         <h1 className="text-2xl font-bold text-center text-cyan-400 mb-6">Lancer un pari</h1>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form className="flex flex-col gap-4">
           <label className="text-gray-200">Adversaire</label>
           <select
             className="p-2 rounded bg-gray-700 text-gray-100"
@@ -173,9 +119,65 @@ export default function PariPage() {
           />
           <div className="text-right text-xs text-gray-400 mb-[-0.5rem]">{description.length}/140</div>
           <button
-            type="submit"
+            type="button"
             className="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-2 px-4 rounded mt-4 disabled:opacity-50"
             disabled={loading}
+            onClick={async () => {
+              playPariSound();
+              setMessage("");
+              if (!currentUser) return;
+              if (!selectedOpponent) {
+                setMessage("Choisissez un adversaire.");
+                return;
+              }
+              if (!Number.isInteger(montant) || montant <= 0) {
+                setMessage("Le montant doit être un entier positif.");
+                return;
+              }
+              if (montant > currentUser.solde) {
+                setMessage("Montant supérieur à votre solde.");
+                return;
+              }
+              setLoading(true);
+              // Créer la transaction (historique)
+              const { error: txError } = await supabase.from("transactions").insert([
+                {
+                  type: "pari",
+                  from: currentUser.uid,
+                  to: selectedOpponent,
+                  montant,
+                  description: description
+                    ? `Sujet : ${description}`
+                    : `Pari lancé entre ${currentUser.pseudo} et ${users.find(u => u.uid === selectedOpponent)?.pseudo}`,
+                  date: new Date().toISOString(),
+                },
+              ]);
+              // Créer l'entrée dans la table "paris"
+              const { error: pariError } = await supabase.from("paris").insert([
+                {
+                  joueur1_uid: currentUser.uid,
+                  joueur2_uid: selectedOpponent,
+                  montant,
+                  statut: "en attente de validation",
+                  gagnant_uid: null,
+                  date: new Date().toISOString(),
+                  ...(description ? { description: description.trim() } : {}),
+                },
+              ]);
+              // Plus de débit ici : le solde du joueur 1 reste inchangé tant que le pari n'est pas accepté
+              if (txError || pariError) {
+                setMessage(
+                  "Erreur lors de la création du pari: " +
+                  (txError?.message || pariError?.message || "Veuillez réessayer.")
+                );
+              } else {
+                setMessage(`Pari lancé avec ${users.find(u => u.uid === selectedOpponent)?.pseudo} pour ₦${montant}` + (description ? `\n📝 Sujet : ${description}` : "") + ". En attente de réponse ou de validation.");
+                setMontant(0);
+                setSelectedOpponent("");
+                setDescription("");
+              }
+              setLoading(false);
+            }}
           >
             {loading ? "Patiente..." : "Lancer le pari"}
           </button>
@@ -183,5 +185,13 @@ export default function PariPage() {
         {message && <div className="mt-6 text-center text-cyan-300">{message}</div>}
       </div>
     </div>
+  );
+}
+
+export default function PariPageWithProvider() {
+  return (
+    <PariSoundProvider>
+      <PariPage />
+    </PariSoundProvider>
   );
 }

@@ -1,10 +1,11 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabaseClient";
 
 
 export default function TransfertPage() {
+  const audioRef = useRef<HTMLAudioElement>(null);
   const router = useRouter();
   const [users, setUsers] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null);
@@ -81,6 +82,12 @@ export default function TransfertPage() {
         date: new Date().toISOString(),
       });
       setSuccessMsg(`Tu as envoyé ₦${montant} à ${users.find(u => u.uid === destinataire)?.pseudo || "ce membre"} 🎉`);
+      // Joue le son de pièce à la validation
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.volume = 0.7;
+        audioRef.current.play().catch(() => {});
+      }
       setTimeout(() => router.push("/portefeuille"), 1500);
     } catch (e: any) {
       setErrorMsg(e.message || "Erreur lors du transfert.");
@@ -90,6 +97,7 @@ export default function TransfertPage() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#0B0F1C] px-4 relative">
+      <audio ref={audioRef} src="/coin.mp3" preload="auto" />
       {/* Bouton retour mobile friendly */}
       <button
         onClick={() => router.push("/")}

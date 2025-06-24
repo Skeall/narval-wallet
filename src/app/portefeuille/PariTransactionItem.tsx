@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { supabase } from "@/utils/supabaseClient";
 
 interface PariTransactionItemProps {
@@ -43,6 +43,7 @@ function formatDate(dateString: string) {
 }
 
 export default function PariTransactionItem({ tx, user, badgeColors, typeLabels, refreshData }: PariTransactionItemProps) {
+  const audioRef = useRef<HTMLAudioElement>(null);
   const [showWinnerChoice, setShowWinnerChoice] = useState(false);
   const [winnerActionMsg, setWinnerActionMsg] = useState("");
   const [loading, setLoading] = useState(false);
@@ -78,6 +79,11 @@ export default function PariTransactionItem({ tx, user, badgeColors, typeLabels,
       await supabase.from("paris").update({ statut: "terminé", gagnant_uid: winnerUid }).eq("id", pari.id);
       setWinnerActionMsg("Le gagnant a été défini et les gains distribués !");
       setShowWinnerChoice(false);
+      // Play victory sound if the user is the winner
+      if (winnerUid === user.uid && audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play().catch(() => {});
+      }
       setTimeout(() => {
         if (refreshData) refreshData();
       }, 1200);
@@ -88,7 +94,9 @@ export default function PariTransactionItem({ tx, user, badgeColors, typeLabels,
   };
 
   return (
-    <li className="flex items-center justify-between bg-[#232B42] rounded-lg px-4 py-3">
+    <>
+      <audio ref={audioRef} src="/victory.mp3" preload="auto" />
+      <li className="flex items-center justify-between bg-[#232B42] rounded-lg px-4 py-3">
       <div>
         <div className="font-medium">
           {renderLabel(tx, user)}
@@ -139,5 +147,6 @@ export default function PariTransactionItem({ tx, user, badgeColors, typeLabels,
       </div>
       <span className={`px-2 py-1 rounded text-xs font-semibold ml-2 ${badgeColors[tx.type]}`}>{typeLabels[tx.type]}</span>
     </li>
+    </>
   );
 }

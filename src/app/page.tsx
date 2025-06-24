@@ -4,6 +4,9 @@ import { useRouter } from "next/navigation";
 
 import { supabase } from "@/utils/supabaseClient";
 import ParisEnCoursHomeSection from "./ParisEnCoursHomeSection";
+import { VictorySoundProvider } from "./VictorySoundProvider";
+import { LooseSoundProvider } from "./LooseSoundProvider";
+import { PariSoundProvider } from "./PariSoundProvider";
 import EnchereDuMoisHomeSection from "./EnchereDuMoisHomeSection";
 import ToastNotification from "./ToastNotification";
 
@@ -104,15 +107,18 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#0B0F1C] text-white">
-      {/* Toast transfert reçu */}
-      {showTransferToast && (
-        <ToastNotification message={transferToastMsg} onClose={() => setShowTransferToast(false)} />
-      )}
-      <div className="w-full flex flex-col items-center justify-center min-h-screen">
-        <div className="w-full max-w-[430px] mx-auto flex flex-col gap-6 pt-8">
+    <PariSoundProvider>
+      <LooseSoundProvider>
+        <VictorySoundProvider>
+        <div className="min-h-screen flex flex-col items-center justify-center bg-[#0B0F1C] text-white">
+        {/* Toast transfert reçu */}
+        {showTransferToast && (
+          <ToastNotification message={transferToastMsg} onClose={() => setShowTransferToast(false)} />
+        )}
+        <div className="w-full flex flex-col items-center justify-center min-h-screen">
+          <div className="w-full max-w-[430px] mx-auto flex flex-col gap-6 pt-8">
 
-          {/* Header */}
+            {/* Header */}
           <div className="flex items-center justify-between w-full px-2">
             <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-sky-400 to-blue-800 flex items-center justify-center overflow-hidden border-2 border-[#232B42]">
               <img
@@ -196,5 +202,8 @@ export default function Home() {
         </div>
       </div>
     </div>
+        </VictorySoundProvider>
+      </LooseSoundProvider>
+    </PariSoundProvider>
   );
 }
