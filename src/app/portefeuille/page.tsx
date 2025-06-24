@@ -214,10 +214,10 @@ export default function PortefeuillePage() {
       )}
       {/* Bloc Paris à valider */}
       {pendingBets.length > 0 && (
-        <div className="w-full max-w-xl">
-          <h2 className="text-xl font-bold mb-0 text-center text-cyan-400">Paris à valider (reçus)</h2>
+        <div className="w-full max-w-xl mb-8">
+          <h2 className="text-xl font-bold mb-4 text-center text-cyan-400">Paris à valider (reçus)</h2>
           {pendingBets.map((pari) => (
-            <div key={pari.id} className="bg-blue-900 border border-blue-700 rounded-xl p-6 mb-0 flex flex-col items-center shadow-lg animate-fadeIn">
+            <div key={pari.id} className="bg-blue-900 border border-blue-700 rounded-xl p-6 mb-4 flex flex-col items-center shadow-lg animate-fadeIn">
               <div className="flex items-center gap-2 mb-2">
                 <span className="bg-blue-600 text-white text-xs font-semibold px-2 py-1 rounded">Nouveau pari à valider</span>
               </div>
@@ -275,12 +275,12 @@ export default function PortefeuillePage() {
       )}
 
 
-      <div className="bg-[#1C2233] rounded-xl p-8 w-full max-w-xl shadow-lg">
+      <div className="bg-[#1C2233] rounded-xl p-8 w-full max-w-xl shadow-lg mt-4">
         <h1 className="text-3xl font-bold mb-2 text-center text-sky-400">Portefeuille</h1>
         <div className="mb-6 text-center text-lg">
           Solde&nbsp;: <span className="font-bold text-sky-300">{solde} Narvals</span>
         </div>
-        <h2 className="text-xl font-semibold mb-0">Dernières transactions</h2>
+        <h2 className="text-xl font-semibold mb-4">Dernières transactions</h2>
         {errorMsg && (
           <div className="text-center text-red-400 mb-2">{errorMsg}</div>
         )}

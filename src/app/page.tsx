@@ -6,7 +6,6 @@ import { supabase } from "@/utils/supabaseClient";
 import ParisEnCoursHomeSection from "./ParisEnCoursHomeSection";
 import EnchereDuMoisHomeSection from "./EnchereDuMoisHomeSection";
 import ToastNotification from "./ToastNotification";
-import PushTestButton from "./push-test-button";
 
 interface UserData {
   uid: string;
@@ -194,8 +193,6 @@ export default function Home() {
           {user && (
             <ParisEnCoursHomeSection userId={user.uid} userPseudo={user.pseudo} />
           )}
-          {/* Bouton temporaire pour test push */}
-          <PushTestButton />
         </div>
       </div>
     </div>
