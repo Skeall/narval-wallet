@@ -457,7 +457,6 @@ export default function PinataPage() {
               onClick={() => setShowIntro(false)}
               className="absolute bottom-8 right-8 px-4 py-2 rounded-full bg-black bg-opacity-60 text-white text-sm font-semibold hover:bg-opacity-90 border border-white/20 shadow-lg z-20"
               style={{ backdropFilter: 'blur(2px)' }}
-              style={{backdropFilter:'blur(2px)'}}
             >Passer l’intro</button>
           )}
         </div>
