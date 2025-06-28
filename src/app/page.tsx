@@ -19,6 +19,7 @@ interface UserData {
 }
 
 export default function Home() {
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [showTransferToast, setShowTransferToast] = useState(false);
@@ -110,7 +111,8 @@ export default function Home() {
     <PariSoundProvider>
       <LooseSoundProvider>
         <VictorySoundProvider>
-        <div className="min-h-screen flex flex-col items-center justify-center bg-[#0B0F1C] text-white">
+        <div className="min-h-screen flex flex-col items-center justify-center bg-[#0B0F1C] text-white relative">
+
         {/* Toast transfert reçu */}
         {showTransferToast && (
           <ToastNotification message={transferToastMsg} onClose={() => setShowTransferToast(false)} />
@@ -119,42 +121,61 @@ export default function Home() {
           <div className="w-full max-w-[430px] mx-auto flex flex-col gap-6 pt-8">
 
             {/* Header */}
-          <div className="flex items-center justify-between w-full px-2">
-            <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-sky-400 to-blue-800 flex items-center justify-center overflow-hidden border-2 border-[#232B42]">
-              <img
-                src={user?.avatar || "/avatar-paysage.jpg"}
-                alt="Avatar"
-                className="object-cover w-full h-full"
-              />
+          <div className="flex items-start justify-between w-full px-1 pt-2 pb-0 gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-sky-400 to-blue-800 flex items-center justify-center overflow-hidden border-2 border-[#232B42]">
+                <img
+                  src={user?.avatar || "/avatar-paysage.jpg"}
+                  alt="Avatar"
+                  className="object-cover w-full h-full cursor-pointer hover:scale-110 transition-transform"
+                  onClick={() => setShowAvatarModal(true)}
+                />
+              </div>
+              <div className="flex flex-col justify-center">
+                <span className="text-base font-medium text-gray-300 leading-tight whitespace-nowrap">Salut <span role="img" aria-label="wave">👋</span> <span className="text-white font-semibold">{user?.pseudo}</span></span>
+              </div>
             </div>
-            <button
-              aria-label="Voir le portefeuille"
-              className="p-3 rounded-full hover:bg-[#232B42] transition"
-              onClick={() => router.push("/portefeuille")}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-7 h-7 text-sky-300">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-            </button>
+            {/* Groupe Piñata + notification côte à côte */}
+            <div className="flex items-center gap-0">
+              <button
+                onClick={() => { sessionStorage.setItem("unmuteIntro", "1"); router.push('/pinata'); }}
+                className="bg-transparent p-0 m-0 hover:bg-transparent focus:outline-none flex items-center justify-center"
+                aria-label="Aller à la Piñata"
+              >
+                <img src="/iconpinata.png" alt="Piñata" className="w-6 h-6 object-contain" />
+              </button>
+              <div className="relative flex-shrink-0">
+                <button
+                  aria-label="Voir le portefeuille"
+                  className="p-2 rounded-full hover:bg-[#232B42] transition"
+                  onClick={() => router.push("/portefeuille")}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6 text-sky-300">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                  {/* Badge notification rouge */}
+                  <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse" />
+                </button>
+              </div>
+            </div>
           </div>
-          {/* Pseudo + solde */}
-          <div className="mt-2">
-            <div className="text-lg font-medium text-gray-300 text-center">Salut <span role="img" aria-label="wave">👋</span> <span className="text-white font-semibold">{user?.pseudo}</span></div>
-            <div className="text-5xl md:text-6xl font-bold text-sky-300 mt-2 select-none tracking-tight text-center" style={{letterSpacing: '-2px'}}>
+          {/* Solde */}
+          <div className="mt-0 mb-0 flex flex-col items-center">
+            <div className="text-4xl md:text-5xl font-bold text-sky-300 mt-0 select-none tracking-tight text-center" style={{letterSpacing: '-1px', marginTop: 0, marginBottom: '0.10rem'}}>
               ₦{user?.solde}
             </div>
           </div>
           {/* Actions rapides */}
-          <div className="flex gap-4 mt-8 w-full">
+          <div className="flex gap-4 mt-2 w-full">
             <button
-              className="flex-1 flex flex-col items-center justify-center py-5 rounded-2xl bg-[#232B42] hover:shadow-[0_0_12px_2px_rgba(56,189,248,0.4)] hover:bg-sky-800/40 transition group"
+              className="flex-1 flex flex-col items-center justify-center py-3 rounded-2xl bg-[#232B42] hover:shadow-[0_0_12px_2px_rgba(56,189,248,0.4)] hover:bg-sky-800/40 transition group"
               onClick={() => router.push("/transfert")}
             >
               <span className="text-2xl mb-1 group-hover:animate-bounce">📤</span>
               <span className="font-semibold text-base">Envoyer</span>
             </button>
             <button
-              className="flex-1 flex flex-col items-center justify-center py-5 rounded-2xl bg-[#232B42] hover:shadow-[0_0_12px_2px_rgba(139,92,246,0.4)] hover:bg-purple-800/40 transition group"
+              className="flex-1 flex flex-col items-center justify-center py-3 rounded-2xl bg-[#232B42] hover:shadow-[0_0_12px_2px_rgba(139,92,246,0.4)] hover:bg-purple-800/40 transition group"
               onClick={() => router.push("/pari")}
             >
               <span className="text-2xl mb-1 group-hover:animate-bounce">🎯</span>
@@ -199,6 +220,36 @@ export default function Home() {
           {user && (
             <ParisEnCoursHomeSection userId={user.uid} userPseudo={user.pseudo} />
           )}
+        {/* Modal d'avatar agrandi */}
+        {showAvatarModal && user && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowAvatarModal(false)}
+            aria-modal="true"
+            role="dialog"
+          >
+            <div
+              className="relative flex flex-col items-center"
+              onClick={e => e.stopPropagation()}
+            >
+              <button
+                className="absolute -top-4 -right-4 bg-white/80 hover:bg-white text-black rounded-full p-1 shadow-lg"
+                onClick={() => setShowAvatarModal(false)}
+                aria-label="Fermer"
+                tabIndex={0}
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M6 18L18 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+              </button>
+              <img
+                src={user.avatar || "/avatar-paysage.jpg"}
+                alt={user.pseudo}
+                className="w-48 h-48 md:w-64 md:h-64 rounded-full object-cover border-4 border-white shadow-2xl"
+                style={{ background: 'transparent' }}
+              />
+              <span className="mt-4 text-white text-lg font-bold drop-shadow-lg">{user.pseudo}</span>
+            </div>
+          </div>
+        )}
         </div>
       </div>
     </div>

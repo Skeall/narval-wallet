@@ -147,6 +147,49 @@ export default function ParisEnCoursHomeSection({ userId, userPseudo, refresh }:
                   await supabase.from("users").update({ solde: user1.solde - pari.montant }).eq("uid", user1.uid);
                   await supabase.from("users").update({ solde: user2.solde - pari.montant }).eq("uid", user2.uid);
                   await supabase.from("paris").update({ statut: "en cours" }).eq("id", pari.id);
+                  // Donne un coup piñata aux deux joueurs (user1 et user2)
+                  const today = new Date().toISOString().slice(0, 10);
+                  // Récupère la piñata active
+                  const { data: pinataActive } = await supabase
+                    .from('pinata')
+                    .select('pinata_id')
+                    .eq('statut', 'active')
+                    .single();
+                  if (pinataActive && pinataActive.pinata_id) {
+                    const pinata_id = pinataActive.pinata_id;
+                    // Pour chaque joueur du pari, on garantit la ligne user_daily_hit pour la nouvelle piñata active
+                   for (const uid of [pari.joueur1_uid, pari.joueur2_uid]) {
+                     // 1. Essaye d'abord un update
+                     const { data: updateData, error: updateError, count } = await supabase
+                       .from('user_daily_hit')
+                       .update({ has_pari_accepted: true })
+                       .eq('user_id', uid)
+                       .eq('pinata_id', pinata_id)
+                       .eq('date', today)
+                       .select('user_id'); // pour avoir le count
+
+                     if (updateError) console.error('[Update Piñata]', {uid, pinata_id, today, updateError});
+                     if (!updateError && updateData && updateData.length > 0) {
+                       console.log('[Update Piñata]', {uid, pinata_id, today});
+                       setActionMsg(prev => (prev ? prev + '\n' : '') + `[Update Piñata] uid=${uid}, pinata_id=${pinata_id}, date=${today} => OK`);
+                     } else {
+                       // 2. Si aucune ligne mise à jour, fait un insert
+                       const { error: insertError } = await supabase.from('user_daily_hit').insert({
+                         user_id: uid,
+                         pinata_id,
+                         date: today,
+                         has_pari_accepted: true
+                       });
+                       if (insertError) {
+                         console.error('[Insert Piñata]', {uid, pinata_id, today, insertError});
+                         setActionMsg(prev => (prev ? prev + '\n' : '') + `[Insert Piñata] uid=${uid}, pinata_id=${pinata_id}, date=${today} => ERREUR: ${insertError.message}`);
+                       } else {
+                         console.log('[Insert Piñata]', {uid, pinata_id, today});
+                         setActionMsg(prev => (prev ? prev + '\n' : '') + `[Insert Piñata] uid=${uid}, pinata_id=${pinata_id}, date=${today} => OK`);
+                       }
+                     }
+                   } 
+                  }
                   // Met à jour localement le pari comme 'en cours' pour affichage immédiat
                   setBets(bets.map(b => b.id === pari.id ? { ...b, statut: "en cours" } : b));
                   setActionMsg("Pari accepté ! En attente de validation de l'admin.");

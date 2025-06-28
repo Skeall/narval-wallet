@@ -23,7 +23,7 @@ interface EnchereHistorique {
 
 import { useRouter } from "next/navigation";
 
-export default function EncherePage() {
+function EncherePage() {
   const router = useRouter();
   const [avatarsByUid, setAvatarsByUid] = useState<Record<string, string>>({});
   const [enchere, setEnchere] = useState<Enchere|null>(null);
@@ -52,11 +52,12 @@ export default function EncherePage() {
         .eq("uid", user.id)
         .single();
       setCurrentUser(userData);
-      // Enchère du mois (on suppose une seule active)
+      // Récupère uniquement l'enchère en cours
       const { data: enchereData } = await supabase
         .from("enchere")
         .select("*")
-        .order("deadline", { ascending: false })
+        .eq("statut", "en_cours")
+        .order("deadline", { ascending: true })
         .limit(1)
         .single();
       setEnchere(enchereData);
@@ -96,6 +97,8 @@ export default function EncherePage() {
           .eq("enchere_id", enchereData.id)
           .order("date", { ascending: false });
         setHistorique(histoData || []);
+      } else {
+        setHistorique([]);
       }
       setLoading(false);
     };
@@ -260,97 +263,106 @@ export default function EncherePage() {
     setLoading(false);
   };
 
-
   return (
-    <div className="flex flex-col items-center min-h-screen bg-slate-900 py-8 px-2 md:px-0">
-      {/* Bouton retour mobile friendly */}
-      <button
-        onClick={() => router.push("/")}
-        className="absolute top-3 left-3 z-20 bg-slate-700/80 hover:bg-slate-600/90 rounded-full p-2 shadow transition focus:outline-none focus:ring-2 focus:ring-cyan-400 flex items-center justify-center"
-        style={{ width: 40, height: 40 }}
-        aria-label="Retour à l'accueil"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 text-cyan-300">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-        </svg>
-      </button>
-      <div className="w-full max-w-md mx-auto bg-slate-800 rounded-2xl shadow-2xl p-4 md:p-8 flex flex-col gap-6 relative">
-        <div className="flex flex-col items-center gap-2">
-          <img src={`/${enchere?.lot_image || "booster homepage.png"}`} alt={enchere?.lot_title} className="w-28 h-28 object-contain rounded-2xl shadow-2xl drop-shadow-xl bg-slate-800" />
-          <div className="text-xl md:text-2xl font-bold text-cyan-200 text-center mt-2">{enchere?.lot_title || "Booster X1"}</div>
-          <div className="text-gray-300 text-center mt-1">{enchere?.lot_description || "Un paquet de cartes contenant 5 cartes ✨"}</div>
-        </div>
-        {/* ENCHERE EN COURS */}
-        <div className="bg-gray-700 rounded-lg p-4 w-full flex flex-col items-center mb-6">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-2xl">🧨</span>
-            <span className="text-lg font-bold text-cyan-300">Enchère du mois</span>
-          </div>
-          <div className="text-3xl font-bold text-yellow-400 mb-2">{enchere ? `₦${historique && historique.length > 0 ? Math.max(...historique.map(h => h.montant)) : enchere.current_bid}` : "-"}</div>
-          <div className="text-md text-cyan-200 mb-1">Leader : <span className="font-semibold">{leaderPseudo}</span></div>
-          <div className="text-sm text-gray-300 flex items-center gap-1 mb-1"><span>⏳</span>Temps restant : <span className="font-mono">{timer}</span></div>
-        </div>
-        {/* FORMULAIRE SURENCHERE */}
-        <form onSubmit={handleBid} className="flex flex-col items-center w-full gap-2">
-          <label className="text-gray-200">Montant de la surenchère</label>
-          <div className="flex flex-col items-center gap-2 mb-2 w-full">
-            <div className="text-3xl font-bold text-yellow-300 mb-2">₦{montant}</div>
-            <div className="flex items-center w-full gap-2">
-              <button
-                type="button"
-                className="bg-gray-700 text-cyan-400 rounded-full w-8 h-8 flex items-center justify-center text-xl hover:bg-gray-600"
-                onClick={() => setMontant(m => Math.max(minBid, m - 1))}
-                aria-label="Diminuer"
-                disabled={!currentUser || (topBid && currentUser.uid === topBid.uid) || loading}
-              >-</button>
-              <input
-                type="range"
-                min={minBid}
-                max={currentUser ? currentUser.solde : minBid}
-                value={montant}
-                onChange={e => setMontant(Number(e.target.value))}
-                className="flex-1 accent-yellow-400"
-                disabled={!currentUser || (topBid && currentUser.uid === topBid.uid) || loading}
+    <div className="min-h-screen bg-[#0B0F1C] flex flex-col items-center justify-center py-8 px-2">
+      <div className="bg-[#1E293B] rounded-2xl shadow-lg p-8 w-full max-w-2xl flex flex-col items-center">
+        <h1 className="text-3xl md:text-4xl font-extrabold text-yellow-400 mb-2 text-center flex items-center gap-2">
+          🏆 Enchère du mois
+        </h1>
+        {loading ? (
+          <div className="text-cyan-300 text-lg animate-pulse">Chargement...</div>
+        ) : !enchere ? (
+          <div className="text-gray-400 text-lg text-center mt-4">Aucune enchère en cours.<br/>Reviens plus tard ou surveille la prochaine ouverture !</div>
+        ) : (
+          <>
+            <div className="flex flex-col md:flex-row gap-6 items-center w-full justify-center mt-4 mb-4">
+              <img
+                src={enchere.lot_image}
+                alt={enchere.lot_title}
+                className="w-32 h-32 md:w-40 md:h-40 object-cover rounded-2xl shadow-2xl drop-shadow-xl bg-slate-800"
+                style={{ background: "transparent" }}
               />
-              <button
-                type="button"
-                className="bg-gray-700 text-cyan-400 rounded-full w-8 h-8 flex items-center justify-center text-xl hover:bg-gray-600"
-                onClick={() => setMontant(m => Math.min(currentUser ? currentUser.solde : minBid, m + 1))}
-                aria-label="Augmenter"
-                disabled={!currentUser || (topBid && currentUser.uid === topBid.uid) || loading}
-              >+</button>
+              <div className="flex-1 min-w-0 flex flex-col gap-2 justify-center items-center">
+                <div className="text-2xl md:text-3xl font-bold text-yellow-300 text-center mb-1">{enchere.lot_title}</div>
+                <div className="text-gray-200 text-center text-base md:text-lg mb-2">{enchere.lot_description}</div>
+                <div className="flex flex-row gap-4 items-center justify-center mt-1">
+                  <span className="text-lg text-gray-400">Mise actuelle :</span>
+                  <span className="text-2xl font-bold text-yellow-400">₦{enchere.current_bid}</span>
+                </div>
+                <div className="flex flex-row gap-2 items-center justify-center mt-1">
+                  <span className="text-lg text-gray-400">Leader :</span>
+                  <span className="text-lg font-bold text-cyan-300">{leaderPseudo}</span>
+                </div>
+                <div className="flex flex-row gap-2 items-center justify-center mt-1">
+                  <span className="text-lg text-gray-400">Fin :</span>
+                  <span className="text-lg font-bold text-yellow-300">{timer}</span>
+                </div>
+              </div>
             </div>
-            <div className="text-xs text-gray-400">Minimum requis : <span className="font-semibold text-cyan-300">₦{minBid}</span> &nbsp;|&nbsp; Max : <span className="font-semibold text-cyan-300">₦{currentUser ? currentUser.solde : minBid}</span></div>
-          </div>
-          <button
-            type="submit"
-            className="bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-bold py-2 px-4 rounded mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={!currentUser || (topBid && currentUser.uid === topBid.uid) || montant < minBid || montant > (currentUser?.solde || 0) || loading}
-          >{loading ? "Patiente..." : "Faire une offre"}</button>
-        </form>
-        {message && <div className="mt-4 text-center text-cyan-300 animate-bounce">{message}</div>}
-        {/* HISTORIQUE DES ENCHERES */}
-        <div className="mt-8 w-full">
-          <div className="text-lg font-bold text-gray-200 mb-2 flex items-center gap-2"><span>📜</span>Historique des enchères</div>
-          <ul className="space-y-2">
-            {historique.length === 0 && <li className="text-gray-400 text-center">Aucune offre pour le moment.</li>}
-            {historique.map(h => {
-              const isLeader = topBid && h.uid === topBid.uid && h.montant === topBid.montant;
-              const avatarUrl = avatarsByUid[h.uid] || '/default-avatar.png';
-              return (
-                <li key={h.id} className={`bg-gray-700 rounded p-2 flex items-center gap-3 border-l-4 ${isLeader ? 'border-yellow-400 bg-yellow-300/10 shadow-yellow-200/10' : 'border-transparent'} transition-all`}>
-                  <img src={avatarUrl} alt={h.pseudo} className="w-8 h-8 rounded-full object-cover bg-slate-800 border border-gray-600" />
-                  <span className={`font-semibold ${isLeader ? 'text-yellow-300' : 'text-cyan-300'}`}>{h.pseudo}</span>
-                  {isLeader && <span className="ml-1 px-2 py-0.5 rounded bg-yellow-400 text-yellow-900 text-xs font-bold">Leader</span>}
-                  <span className="flex-1"></span>
-                  <span className="text-yellow-300 font-bold">₦{h.montant}</span>
-                  <span className="text-xs text-gray-400 ml-3">{new Date(h.date).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
+            <form onSubmit={handleBid} className="w-full flex flex-col items-center gap-2 mt-2">
+              <label className="text-gray-200">Montant de la surenchère</label>
+              <div className="flex flex-col items-center gap-2 mb-2 w-full">
+                <div className="text-3xl font-bold text-yellow-300 mb-2">₦{montant}</div>
+                <div className="flex items-center w-full gap-2">
+                  <button
+                    type="button"
+                    className="bg-gray-700 text-cyan-400 rounded-full w-8 h-8 flex items-center justify-center text-xl hover:bg-gray-600"
+                    onClick={() => setMontant(m => Math.max(minBid, m - 1))}
+                    aria-label="Diminuer"
+                    disabled={!currentUser || (topBid && currentUser.uid === topBid.uid) || loading}
+                  >-</button>
+                  <input
+                    type="range"
+                    min={minBid}
+                    max={currentUser ? currentUser.solde : minBid}
+                    value={montant}
+                    onChange={e => setMontant(Number(e.target.value))}
+                    className="flex-1 accent-yellow-400"
+                    disabled={!currentUser || (topBid && currentUser.uid === topBid.uid) || loading}
+                  />
+                  <button
+                    type="button"
+                    className="bg-gray-700 text-cyan-400 rounded-full w-8 h-8 flex items-center justify-center text-xl hover:bg-gray-600"
+                    onClick={() => setMontant(m => Math.min(currentUser ? currentUser.solde : minBid, m + 1))}
+                    aria-label="Augmenter"
+                    disabled={!currentUser || (topBid && currentUser.uid === topBid.uid) || loading}
+                  >+</button>
+                </div>
+                <div className="text-xs text-gray-400">Minimum requis : <span className="font-semibold text-cyan-300">₦{minBid}</span> &nbsp;|&nbsp; Max : <span className="font-semibold text-cyan-300">₦{currentUser ? currentUser.solde : minBid}</span></div>
+              </div>
+              <button
+                type="submit"
+                className="bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-bold py-2 px-4 rounded mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!currentUser || (topBid && currentUser.uid === topBid.uid) || montant < minBid || montant > (currentUser?.solde || 0) || loading}
+              >{loading ? "Patiente..." : "Faire une offre"}</button>
+            </form>
+            {message && <div className="mt-4 text-center text-cyan-300 animate-bounce">{message}</div>}
+            {/* HISTORIQUE DES ENCHERES */}
+            <div className="mt-8 w-full">
+              <div className="text-lg font-bold text-gray-200 mb-2 flex items-center gap-2"><span>📜</span>Historique des enchères</div>
+              <ul className="space-y-2">
+                {historique.length === 0 && <li className="text-gray-400 text-center">Aucune offre pour le moment.</li>}
+                {historique.map(h => {
+                  const isLeader = topBid && h.uid === topBid.uid && h.montant === topBid.montant;
+                  const avatarUrl = avatarsByUid[h.uid] || '/default-avatar.png';
+                  return (
+                    <li key={h.id} className={`bg-gray-700 rounded p-2 flex items-center gap-3 border-l-4 ${isLeader ? 'border-yellow-400 bg-yellow-300/10 shadow-yellow-200/10' : 'border-transparent'} transition-all`}>
+                      <img src={avatarUrl} alt={h.pseudo} className="w-8 h-8 rounded-full object-cover bg-slate-800 border border-gray-600" />
+                      <span className={`font-semibold ${isLeader ? 'text-yellow-300' : 'text-cyan-300'}`}>{h.pseudo}</span>
+                      {isLeader && <span className="ml-1 px-2 py-0.5 rounded bg-yellow-400 text-yellow-900 text-xs font-bold">Leader</span>}
+                      <span className="flex-1"></span>
+                      <span className="text-yellow-300 font-bold">₦{h.montant}</span>
+                      <span className="text-xs text-gray-400 ml-3">{new Date(h.date).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
-}
+};
+
+export default EncherePage;
