@@ -97,6 +97,25 @@ export default function PinataPage() {
     }
   }, [showIntro]);
 
+  // Fonction de récupération de la piñata (doit être déclarée avant le useEffect)
+  const fetchPinata = async () => {
+    setLoading(true);
+    setError(null);
+    const { data, error } = await supabase
+      .from("pinata")
+      .select("*")
+      .order("date_creation", { ascending: false })
+      .limit(1)
+      .single();
+    if (error) {
+      setError("Erreur lors du chargement de la piñata.");
+      setPinata(null);
+    } else {
+      setPinata(data);
+    }
+    setLoading(false);
+  };
+
   // Auto-création de piñata à minuit si aucune active
   useEffect(() => {
     const checkAndCreatePinata = async () => {
