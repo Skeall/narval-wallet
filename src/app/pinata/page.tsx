@@ -631,4 +631,3 @@ export default function PinataPage() {
   );
 }
 
-export default PinataPage;
