@@ -629,3 +629,6 @@ export default function PinataPage() {
   </div>
     </>
   );
+}
+
+export default PinataPage;
