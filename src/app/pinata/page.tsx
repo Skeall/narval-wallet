@@ -11,6 +11,7 @@ interface Pinata {
   joueur_gagnant_id: string | null;
   joueur_gagnant_pseudo: string | null;
   nombre_total_de_coups: number | null;
+  statut: string;
 }
 
 interface PinataHit {
