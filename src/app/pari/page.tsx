@@ -139,20 +139,31 @@ function PariPage() {
                 return;
               }
               setLoading(true);
-              // Créer la transaction (historique)
+              // 1. Vérifier le solde à jour (déjà fait plus haut, mais re-vérification côté BDD possible en production)
+              // 2. Débiter la mise du solde du joueur 1
+              const { error: soldeError } = await supabase
+                .from("users")
+                .update({ solde: currentUser.solde - montant })
+                .eq("uid", currentUser.uid);
+              if (soldeError) {
+                setMessage("Erreur lors du débit de la mise: " + soldeError.message);
+                setLoading(false);
+                return;
+              }
+              // 3. Insérer la transaction négative (historique)
               const { error: txError } = await supabase.from("transactions").insert([
                 {
                   type: "pari",
                   from: currentUser.uid,
                   to: selectedOpponent,
-                  montant,
+                  montant: -montant,
                   description: description
                     ? `Sujet : ${description}`
                     : `Pari lancé entre ${currentUser.pseudo} et ${users.find(u => u.uid === selectedOpponent)?.pseudo}`,
                   date: new Date().toISOString(),
                 },
               ]);
-              // Créer l'entrée dans la table "paris"
+              // 4. Créer l'entrée dans la table "paris"
               const { error: pariError } = await supabase.from("paris").insert([
                 {
                   joueur1_uid: currentUser.uid,
@@ -164,8 +175,10 @@ function PariPage() {
                   ...(description ? { description: description.trim() } : {}),
                 },
               ]);
-              // Plus de débit ici : le solde du joueur 1 reste inchangé tant que le pari n'est pas accepté
+              // Rollback si erreur transaction ou pari (remet le solde si erreur)
               if (txError || pariError) {
+                // Rembourse le solde si une des deux opérations a échoué
+                await supabase.from("users").update({ solde: currentUser.solde }).eq("uid", currentUser.uid);
                 setMessage(
                   "Erreur lors de la création du pari: " +
                   (txError?.message || pariError?.message || "Veuillez réessayer.")
