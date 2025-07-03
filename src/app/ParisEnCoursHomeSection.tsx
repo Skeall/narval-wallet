@@ -79,7 +79,7 @@ export default function ParisEnCoursHomeSection({ userId, userPseudo, refresh }:
       setLoading(true);
       const { data: bets } = await supabase
         .from("paris")
-        .select("*, joueur1:joueur1_uid (pseudo), joueur2:joueur2_uid (pseudo)")
+        .select("*, joueur1:joueur1_uid (pseudo, avatar), joueur2:joueur2_uid (pseudo, avatar)")
         .or(`joueur1_uid.eq.${userId},joueur2_uid.eq.${userId}`);
       // Ne garder que les statuts "en cours" ou "en attente de validation"
       const filteredBets = (bets || []).filter(
@@ -217,10 +217,27 @@ export default function ParisEnCoursHomeSection({ userId, userPseudo, refresh }:
             >
               {/* Ligne du haut avec avatar et pseudo adversaire */}
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-600/80 to-cyan-300/40 border-2 border-cyan-400/50 shadow-cyan-400/10 shadow-lg flex items-center justify-center text-cyan-100 text-lg font-bold">
-                  <span className="select-none">
-                    {adversaire.slice(0,2).toUpperCase()}
-                  </span>
+                <div className="w-10 h-10 rounded-full border-2 border-cyan-400/50 shadow-cyan-400/10 shadow-lg flex items-center justify-center bg-gradient-to-br from-cyan-600/80 to-cyan-300/40 overflow-hidden">
+                  {(() => {
+                    const adversaireData = isJoueur1 ? pari.joueur2 : pari.joueur1;
+                    if (adversaireData?.avatar) {
+                      return (
+                        <img
+                          src={adversaireData.avatar}
+                          alt={adversaireData.pseudo || 'Avatar'}
+                          className="object-cover w-full h-full"
+                          style={{ minWidth: 40, minHeight: 40 }}
+                          onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        />
+                      );
+                    } else {
+                      return (
+                        <span className="select-none text-cyan-100 text-lg font-bold">
+                          {adversaire.slice(0,2).toUpperCase()}
+                        </span>
+                      );
+                    }
+                  })()}
                 </div>
                 <div className="flex-1">
                   <span className="font-semibold text-cyan-100 text-base tracking-wide">

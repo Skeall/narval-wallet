@@ -121,7 +121,7 @@ export default function Home() {
           <div className="w-full max-w-[430px] mx-auto flex flex-col gap-6 pt-8">
 
             {/* Header */}
-          <div className="flex items-start justify-between w-full px-1 pt-2 pb-0 gap-2">
+          <div className="flex items-start justify-between w-full px-1 pt-0 pb-0 gap-2 -mt-3">
             <div className="flex items-center gap-2 flex-shrink-0">
               <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-sky-400 to-blue-800 flex items-center justify-center overflow-hidden border-2 border-[#232B42]">
                 <img
@@ -151,10 +151,9 @@ export default function Home() {
                   onClick={() => router.push("/portefeuille")}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6 text-sky-300">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  {/* Badge notification rouge */}
-                  <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse" />
+
                 </button>
               </div>
             </div>

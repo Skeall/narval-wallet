@@ -51,8 +51,7 @@ const badgeColors: Record<string, string> = {
 
 export default function PortefeuillePage() {
   const router = useRouter();
-  const [pendingBets, setPendingBets] = useState<any[]>([]);
-  const [betActionMsg, setBetActionMsg] = useState("");
+
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [user, setUser] = useState<User|null>(null);
   const [solde, setSolde] = useState<number>(0);
@@ -63,21 +62,6 @@ export default function PortefeuillePage() {
 
   // Déclare fetchData ici pour qu'elle soit accessible partout
   const fetchData = async () => {
-      // Récupère aussi les paris en attente où l'utilisateur est joueur2
-      let pendingBets: any[] = [];
-      try {
-        const { data: { user: authUser } } = await supabase.auth.getUser();
-        if (authUser) {
-          const { data: bets } = await supabase
-            .from("paris")
-            .select("*, joueur1:joueur1_uid (pseudo), joueur2:joueur2_uid (pseudo)")
-            .in("statut", ["en attente", "en attente de validation"])
-            .eq("joueur2_uid", authUser.id);
-          pendingBets = bets || [];
-        }
-      } catch (e) { /* ignore */ }
-      setPendingBets(pendingBets);
-
       try {
         setLoading(true);
         // 1. Récupérer l'utilisateur connecté
@@ -208,96 +192,7 @@ export default function PortefeuillePage() {
         </svg>
       </button>
 
-      {/* Bloc Paris à valider */}
-      {pendingBets.length > 0 && (
-        <div className="w-full max-w-xl mb-8">
-          <h2 className="text-2xl font-extrabold mb-5 text-center text-cyan-300 tracking-tight drop-shadow-glow">Paris à valider (reçus)</h2>
-          {/* Affichage des invitations à accepter/refuser uniquement */}
-          <div className="flex flex-col gap-6 mb-8">
-            {pendingBets.map((pari) => (
-              <div
-                key={pari.id}
-                className="bg-gradient-to-br from-blue-900/80 via-blue-800/70 to-cyan-900/80 border border-blue-400/30 rounded-2xl p-6 shadow-xl backdrop-blur-md flex flex-col items-center animate-fadeIn hover:scale-[1.025] transition-transform duration-200 mb-4"
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="inline-flex items-center gap-1 bg-blue-700/80 text-cyan-100 text-xs font-semibold px-3 py-1 rounded-full shadow-md">
-                    <span className="material-symbols-rounded text-base align-middle">hourglass_top</span>
-                    Nouveau pari à valider
-                  </span>
-                </div>
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-600 to-blue-700 flex items-center justify-center text-lg font-bold text-white shadow">
-                    {(pari.joueur1?.pseudo || 'U')[0].toUpperCase()}
-                  </div>
-                  <span className="text-base text-cyan-100 font-medium">
-                    <span className="font-bold text-cyan-300">{pari.joueur1?.pseudo || "Un joueur"}</span> te propose un pari de
-                  </span>
-                  <span className="text-xl font-extrabold text-cyan-300">₦{pari.montant}</span>
-                </div>
-                {pari.description && (
-                  <div className="mb-3 px-4 py-2 rounded-xl bg-blue-950/60 text-cyan-200 text-sm font-medium italic text-center border border-cyan-900/30 shadow-inner">
-                    <span className="material-symbols-rounded align-middle mr-1 text-cyan-300 text-base">chat_bubble</span>
-                    {pari.description}
-                  </div>
-                )}
-                <div className="flex gap-4 mt-2 w-full justify-center">
-                  <button
-                    className="group/button bg-gradient-to-r from-cyan-500/90 to-blue-500/80 hover:from-cyan-400 hover:to-blue-400 text-white font-bold py-2 px-8 rounded-full shadow-lg shadow-cyan-900/20 border border-cyan-400/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/80 transition-all duration-150 active:scale-95 select-none flex items-center gap-2 text-base"
-                    title="Accepter le pari"
-                    onClick={async () => {
-                      setBetActionMsg("");
-                      // Vérifie le solde des deux joueurs
-                      const { data: user2 } = await supabase
-                        .from("users")
-                        .select("uid, solde")
-                        .eq("uid", user?.uid)
-                        .single();
-                      const { data: user1 } = await supabase
-                        .from("users")
-                        .select("uid, solde")
-                        .eq("uid", pari.joueur1_uid)
-                        .single();
-                      if (!user2 || user2.solde < pari.montant) {
-                        setBetActionMsg("Solde insuffisant pour accepter ce pari (toi).");
-                        return;
-                      }
-                      if (!user1 || user1.solde < pari.montant) {
-                        setBetActionMsg("Solde insuffisant pour l'autre joueur. Pari annulé.");
-                        await supabase.from("paris").update({ statut: "annulé" }).eq("id", pari.id);
-                        setPendingBets(pendingBets.filter(b => b.id !== pari.id));
-                        return;
-                      }
-                      // Débite les DEUX joueurs
-                      await supabase.from("users").update({ solde: user1.solde - pari.montant }).eq("uid", user1.uid);
-                      await supabase.from("users").update({ solde: user2.solde - pari.montant }).eq("uid", user2.uid);
-                      await supabase.from("paris").update({ statut: "en cours" }).eq("id", pari.id);
-                      setBetActionMsg("Pari accepté ! En attente de validation de l'admin.");
-                      setPendingBets(pendingBets.filter(b => b.id !== pari.id));
-                    }}
-                  >
-                    <span className="material-symbols-rounded text-lg">check_circle</span>
-                    Accepter
-                  </button>
-                  <button
-                    className="group/button bg-gradient-to-r from-red-600/90 to-red-800/80 hover:from-red-500 hover:to-red-700 text-white font-bold py-2 px-8 rounded-full shadow-lg shadow-red-900/20 border border-red-400/30 focus:outline-none focus:ring-2 focus:ring-red-400/80 transition-all duration-150 active:scale-95 select-none flex items-center gap-2 text-base"
-                    title="Refuser le pari"
-                    onClick={async () => {
-                        setBetActionMsg("");
-                        await supabase.from("paris").update({ statut: "refusé" }).eq("id", pari.id);
-                        setBetActionMsg("Pari refusé.");
-                        setPendingBets(pendingBets.filter(b => b.id !== pari.id));
-                      }}
-                  >
-                    <span className="material-symbols-rounded text-lg">cancel</span>
-                    Refuser
-                  </button>
-                </div>
-                {betActionMsg && <div className="mt-4 text-center text-cyan-200 text-sm">{betActionMsg}</div>}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+
       {/* Solde et transactions */}
       <div className="bg-[#1C2233] rounded-xl p-8 w-full max-w-xl shadow-lg mt-4">
         <h1 className="text-3xl font-bold mb-2 text-center text-sky-400">Portefeuille</h1>

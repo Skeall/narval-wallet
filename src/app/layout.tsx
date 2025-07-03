@@ -18,6 +18,8 @@ export const metadata: Metadata = {
   description: "Application de gestion de portefeuille et paris entre amis.",
 };
 
+import BottomNavBar from "./components/BottomNavBar";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -41,10 +43,11 @@ export default function RootLayout({
         <title>Narval</title>
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`} 
+        className={`${geistSans.variable} ${geistMono.variable} antialiased pb-20`} 
         style={{ background: '#0B0F1C', color: '#FFFFFF', fontFamily: 'SF Pro, Inter, sans-serif' }}
       >
         {children}
+        <BottomNavBar />
       </body>
     </html>
   );

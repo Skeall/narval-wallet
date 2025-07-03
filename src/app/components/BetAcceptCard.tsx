@@ -18,8 +18,18 @@ export default function BetAcceptCard({ pari, onAccept, onRefuse, actionMsg, jou
         </span>
       </div>
       <div className="flex items-center gap-3 mb-3">
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-600 to-blue-700 flex items-center justify-center text-lg font-bold text-white shadow">
-          {(joueur1Pseudo || 'U')[0].toUpperCase()}
+        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-600 to-blue-700 flex items-center justify-center text-lg font-bold text-white shadow overflow-hidden">
+          {pari.joueur1?.avatar ? (
+            <img
+              src={pari.joueur1.avatar}
+              alt={joueur1Pseudo || 'Avatar'}
+              className="object-cover w-full h-full"
+              style={{ minWidth: 32, minHeight: 32 }}
+              onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
+          ) : (
+            (joueur1Pseudo || 'U')[0].toUpperCase()
+          )}
         </div>
         <span className="text-base text-cyan-100 font-medium">
           <span className="font-bold text-cyan-300">{joueur1Pseudo || "Un joueur"}</span> te propose un pari de
