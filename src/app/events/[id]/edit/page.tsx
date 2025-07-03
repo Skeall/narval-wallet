@@ -66,7 +66,8 @@ export default function EditEventPage() {
     await supabase.from("events").update({
       title,
       location,
-      date: fullDate,
+      // Stocke la date/heure locale France (Europe/Paris)
+      date: `${date}T${hour}:00+02:00`,
       description,
       cover_url
     }).eq("id", id);

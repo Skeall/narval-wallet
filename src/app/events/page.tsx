@@ -58,7 +58,8 @@ export default function EventsPage() {
 
   function formatDate(dateStr: string, noHour = false) {
     const d = new Date(dateStr);
-    return d.toLocaleDateString("fr-FR", {
+    return d.toLocaleString("fr-FR", {
+      timeZone: "Europe/Paris",
       weekday: "long",
       day: "numeric",
       month: "long",
@@ -67,7 +68,7 @@ export default function EventsPage() {
   }
   function formatHour(dateStr: string) {
     const d = new Date(dateStr);
-    return d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+    return d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" });
   }
 
   async function handleParticipation(ev: Event) {

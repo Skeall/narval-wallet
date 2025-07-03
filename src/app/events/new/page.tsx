@@ -72,7 +72,8 @@ export default function NewEventPage() {
     const { error: insErr } = await supabase.from('events').insert({
       title: title.trim(),
       location: location.trim(),
-      date: eventDate.toISOString(),
+      // Stocke la date/heure locale France (Europe/Paris)
+    date: `${date}T${time}:00+02:00`,
       description: description.trim() || null,
       cover_url,
       creator_uid: currentUserUid,
