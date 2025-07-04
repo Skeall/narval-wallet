@@ -34,7 +34,7 @@ const navItems = [
   },
   {
     label: "Specials",
-    href: "/pinata",
+    href: "/specials",
     icon: (
       <img src="/icons/specials.svg" alt="Spéciales" width={24} height={24} className="mx-auto" />
     ),
