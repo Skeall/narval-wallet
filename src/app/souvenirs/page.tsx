@@ -24,6 +24,12 @@ const EMOJIS = ["❤️", "😂", "🫠", "👏", "🔥"];
 
 export default function SouvenirsPage() {
   // ... états existants ...
+  const [editMode, setEditMode] = useState(false);
+  const [editText, setEditText] = useState("");
+  const [editTagged, setEditTagged] = useState<Set<string>>(new Set());
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState("");
+  // ... états existants ...
   const [formOpen, setFormOpen] = useState(false);
   const [formText, setFormText] = useState("");
   const [formTagged, setFormTagged] = useState<Set<string>>(new Set());
@@ -268,7 +274,31 @@ export default function SouvenirsPage() {
       {/* Modal détail souvenir */}
       {modalOpen && modalSouvenir && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={closeModal}>
-          <div className="relative bg-[#181F2E] rounded-2xl shadow-xl p-4 max-w-md w-full flex flex-col items-center" onClick={e => e.stopPropagation()}>
+          <div className="relative bg-[#181F2E] rounded-2xl shadow-xl p-4 max-w-md w-full flex flex-col items-center max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+  {/* Bouton fermer */}
+  <button
+    className="absolute top-2 right-2 text-gray-400 hover:text-red-400 text-2xl p-1 z-30"
+    onClick={closeModal}
+    aria-label="Fermer"
+    style={{ lineHeight: 1 }}
+  >×</button>
+            {/* Bouton modifier */}
+            {!editMode && (
+              <button
+                className="absolute top-2 right-12 text-xl text-gray-400 hover:text-amber-400 p-1 rounded-full z-20"
+                title="Modifier le souvenir"
+                onClick={() => {
+                  setEditMode(true);
+                  setEditText(modalSouvenir.text || "");
+                  setEditTagged(new Set(modalSouvenir.tagged_users));
+                }}
+                aria-label="Modifier le souvenir"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 3.487a2.06 2.06 0 0 1 2.916 2.915l-9.193 9.193a2 2 0 0 1-.878.51l-3.057.815a.5.5 0 0 1-.614-.614l.815-3.057a2 2 0 0 1 .51-.878l9.193-9.193ZM15.75 6.75l1.5 1.5" />
+                </svg>
+              </button>
+            )}
             {/* Media grand */}
             <div className="w-full aspect-square bg-black mb-2">
               {modalSouvenir.media_type === "image" ? (
@@ -278,9 +308,72 @@ export default function SouvenirsPage() {
               )}
             </div>
             {/* Texte */}
-            {modalSouvenir.text && <div className="text-lg text-white font-semibold mb-2 text-center">{modalSouvenir.text}</div>}
-            {/* Auteur */}
-            <div className="flex items-center gap-2 mb-3">
+            {editMode ? (
+  <>
+    <textarea
+  className="w-full min-h-[48px] max-h-[120px] rounded-lg bg-[#232B42] text-white p-3 resize-vertical text-base mb-2 focus:outline-none focus:ring-2 focus:ring-amber-400 placeholder-gray-400"
+  maxLength={80}
+  value={editText}
+  onChange={e => setEditText(e.target.value)}
+  placeholder="Titre ou description du souvenir"
+  style={{ width: '100%', fontSize: '1rem', boxSizing: 'border-box' }}
+/>
+    {/* Sélection multi-avatar */}
+    <div className="mb-2">
+      <div className="text-sm text-gray-300 mb-1">Taguer des amis :</div>
+      <div className="flex flex-wrap gap-2">
+        {users.map(u => (
+          <div key={u.uid} onClick={() => {
+            setEditTagged(prev => {
+              const next = new Set(prev);
+              if (next.has(u.uid)) next.delete(u.uid);
+              else next.add(u.uid);
+              return next;
+            });
+          }}
+            className={`w-9 h-9 rounded-full border-2 ${editTagged.has(u.uid) ? 'border-amber-400 scale-110 shadow-lg' : 'border-transparent'} bg-[#232B42] flex items-center justify-center transition cursor-pointer`}>
+            <img src={u.avatar || "/avatar-paysage.jpg"} alt={u.pseudo} className="w-7 h-7 rounded-full object-cover" />
+          </div>
+        ))}
+      </div>
+    </div>
+    {/* Boutons édition */}
+    <div className="flex gap-2 mt-2 w-full">
+      <button
+        className="flex-1 bg-amber-400 hover:bg-amber-300 text-black font-bold py-2 rounded-xl shadow-lg transition disabled:opacity-60"
+        disabled={editLoading}
+        onClick={async () => {
+          setEditLoading(true);
+          setEditError("");
+          const { error } = await supabase.from('souvenirs').update({
+            text: editText.trim() || null,
+            tagged_users: Array.from(editTagged)
+          }).eq('id', modalSouvenir.id);
+          setEditLoading(false);
+          if (error) {
+            setEditError(error.message || "Erreur lors de la mise à jour");
+          } else {
+            setEditMode(false);
+            setEditError("");
+            // Rafraîchir la liste locale et la modale
+            setSouvenirs(prev => prev.map(s => s.id === modalSouvenir.id ? { ...s, text: editText.trim() || null, tagged_users: Array.from(editTagged) } : s));
+            setModalSouvenir(s => s ? { ...s, text: editText.trim() || null, tagged_users: Array.from(editTagged) } : s);
+          }
+        }}
+      >Enregistrer les modifications</button>
+      <button
+        className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 rounded-xl shadow-lg transition"
+        onClick={() => { setEditMode(false); setEditError(""); }}
+        disabled={editLoading}
+      >Annuler</button>
+    </div>
+    {editError && <div className="text-red-400 text-center text-sm mt-1">{editError}</div>}
+  </>
+) : modalSouvenir.text && (
+  <div className="text-lg text-white font-semibold mb-2 text-center">{modalSouvenir.text}</div>
+)}
+{/* Auteur */}
+<div className="flex items-center gap-2 mb-3">
               <span className="text-sm text-gray-300">👤 Proposé par</span>
               {userByUid[modalSouvenir.author_uid] && (
                 <img src={userByUid[modalSouvenir.author_uid].avatar || "/avatar-paysage.jpg"} alt={userByUid[modalSouvenir.author_uid].pseudo} className="w-7 h-7 rounded-full object-cover" />

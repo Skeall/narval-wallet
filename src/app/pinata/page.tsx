@@ -116,36 +116,44 @@ export default function PinataPage() {
     setLoading(false);
   };
 
-  // Auto-création de piñata à minuit si aucune active
+  // Nouvelle logique : création automatique 6h après destruction
   useEffect(() => {
-    const checkAndCreatePinata = async () => {
-      const { data: lastPinata, error } = await supabase
-        .from('pinata')
-        .select('*')
-        .order('date_creation', { ascending: false })
-        .limit(1)
-        .single();
-      if (error) return;
+    let timer: NodeJS.Timeout | null = null;
+    const createNewPinataIfNeeded = async () => {
+      if (!pinata || pinata.statut !== 'terminee') return;
+      // Récupère la date de destruction (date_creation de la piñata terminée = date de début, mais il faudrait idéalement une colonne date_fin)
+      // Pour l’instant, on prend la date du dernier hit si possible, sinon date_creation
+      let dateFin = null;
+      if (hits && hits.length > 0) {
+        dateFin = new Date(hits[0].timestamp);
+      } else {
+        dateFin = new Date(pinata.date_creation);
+      }
       const now = new Date();
-      const todayStr = now.toISOString().slice(0, 10);
-      if (
-        (!lastPinata || lastPinata.statut === 'terminee') &&
-        (!lastPinata || lastPinata.date_creation.slice(0, 10) !== todayStr)
-      ) {
+      const diffMs = now.getTime() - dateFin.getTime();
+      const hoursPassed = diffMs / (1000 * 60 * 60);
+      if (hoursPassed >= 6) {
+        // Crée une nouvelle piñata
+        const pv = Math.floor(Math.random() * 12) + 1; // 1 à 12 inclus
         await supabase.from('pinata').insert([
           {
-            pv_total: 10,
-            pv_restants: 10,
+            pv_total: pv,
+            pv_restants: pv,
             date_creation: now.toISOString(),
             statut: 'active',
           },
         ]);
-        // Re-fetch pour afficher la nouvelle
         fetchPinata();
+      } else {
+        // Relance le timer pour vérifier à la minute près
+        timer = setTimeout(createNewPinataIfNeeded, 60 * 1000);
       }
     };
-    checkAndCreatePinata();
-  }, []);
+    if (pinata && pinata.statut === 'terminee') {
+      createNewPinataIfNeeded();
+    }
+    return () => { if (timer) clearTimeout(timer); };
+  }, [pinata, hits]);
 
   // Récupère la piñata
   useEffect(() => {
@@ -415,6 +423,7 @@ export default function PinataPage() {
 
   return (
     <>
+
       {/* Intro vidéo plein écran */}
       {showIntro && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
@@ -531,61 +540,46 @@ export default function PinataPage() {
             </div>
             {/* Récompense */}
             {lastReward !== null && (
-              <div className="text-base font-semibold text-green-400 flex items-center justify-center gap-2 mb-2">
-                +{lastReward} narvals
-                <span className="text-xl">🎁</span>
-              </div>
-            )}
-            {/* Timer live jusqu'à minuit */}
-            <div className="text-xs text-gray-300 mb-4">
-              <LiveCountdown />
-            </div>
-            {/* Derniers participants (plus discret) */}
-            <div className="mt-2 w-full">
-              <div className="text-xs text-yellow-300 mb-1 text-center font-bold">Derniers participants</div>
-              <div className="flex gap-2 overflow-x-auto pb-1">
-                {hits.map((hit, idx) => (
-                  <div key={hit.id} className={`flex flex-col items-center min-w-[54px] bg-[#232B42] rounded-xl px-1.5 py-1.5 shadow ${idx === 0 ? 'border-2 border-amber-400' : ''}`}>
-                    <img
-                      src={hit.user?.avatar || '/default-avatar.png'}
-                      alt={hit.user?.pseudo || 'Joueur'}
-                      className="w-7 h-7 rounded-full object-cover border border-gray-700 mb-0.5"
-                    />
-                    <span className="font-semibold text-white text-[11px] truncate max-w-[40px]">
-                      {userId && hit.user?.uid === userId ? 'Moi' : hit.user?.pseudo || 'Joueur'}
-                    </span>
-                    <span className="text-[9px] text-gray-400">
-                      {new Date(hit.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                    {idx === 0 && <span className="mt-0.5 px-1 py-0.5 rounded bg-amber-400 text-black text-[9px] font-bold">Dernier !</span>}
-                  </div>
-                ))}
-              </div>
-            </div>
+  <div className="text-base font-semibold text-green-400 flex items-center justify-center gap-2 mb-2">
+    +{lastReward} narvals
+    <span className="text-xl">🎁</span>
+  </div>
+)}
+<div className="mt-2 w-full">
+  <div className="text-xs text-yellow-300 mb-1 text-center font-bold">Derniers participants</div>
+  <div className="flex gap-2 overflow-x-auto pb-1">
+    {hits.map((hit, idx) => (
+      <div key={hit.id} className={`flex flex-col items-center min-w-[54px] bg-[#232B42] rounded-xl px-1.5 py-1.5 shadow ${idx === 0 ? 'border-2 border-amber-400' : ''}`}>
+        <img
+          src={hit.user?.avatar || '/default-avatar.png'}
+          alt={hit.user?.pseudo || 'Joueur'}
+          className="w-7 h-7 rounded-full object-cover border border-gray-700 mb-0.5"
+        />
+        <span className="font-semibold text-white text-[11px] truncate max-w-[40px]">
+          {userId && hit.user?.uid === userId ? 'Moi' : hit.user?.pseudo || 'Joueur'}
+        </span>
+        <span className="text-[9px] text-gray-400">
+          {new Date(hit.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        </span>
+        {idx === 0 && <span className="mt-0.5 px-1 py-0.5 rounded bg-amber-400 text-black text-[9px] font-bold">Dernier !</span>}
+      </div>
+    ))}
+  </div>
+</div>
             {/* CTA désactivé, plus petit et sur une ligne */}
             <button
-              className="mt-6 px-4 py-2 rounded-lg text-base font-semibold bg-gray-700 text-gray-400 cursor-not-allowed w-auto"
-              disabled
-            >
-              Reviens demain pour une nouvelle piñata !
-            </button>
+  className="mt-6 px-4 py-2 rounded-lg text-base font-semibold bg-gray-700 text-gray-400 cursor-not-allowed w-auto"
+  disabled
+>
+  Nouvelle piñata dans moins de 6h !
+</button>
           </div>
         ) : pinata && (
           // --- Piñata normale ---
           <div>
             <div className="w-full flex justify-center mb-2 mt-2">
               <img
-                src={
-                  pinata.pv_restants === 0
-                    ? "/pinata/pinata_broken.png"
-                    : pinata.pv_restants / pinata.pv_total > 0.75
-                    ? "/pinata/pinata_100.png"
-                    : pinata.pv_restants / pinata.pv_total > 0.5
-                    ? "/pinata/pinata_75.png"
-                    : pinata.pv_restants / pinata.pv_total > 0.25
-                    ? "/pinata/pinata_50.png"
-                    : "/pinata/pinata_25.png"
-                }
+                src={pinata.pv_restants === 0 ? '/pinata/pinata_broken.png' : '/pinata/pinata_100.png'}
                 alt="Piñata"
                 className="w-44 h-44 object-contain select-none pointer-events-none drop-shadow-xl"
                 draggable={false}
