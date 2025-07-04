@@ -143,8 +143,7 @@ export default function ParisEnCoursHomeSection({ userId, userPseudo, refresh }:
                     setBets(bets.filter(b => b.id !== pari.id));
                     return;
                   }
-                  // Débite les DEUX joueurs
-                  await supabase.from("users").update({ solde: user1.solde - pari.montant }).eq("uid", user1.uid);
+                  // Débite SEULEMENT le joueur2 (accepteur)
                   await supabase.from("users").update({ solde: user2.solde - pari.montant }).eq("uid", user2.uid);
                   await supabase.from("paris").update({ statut: "en cours" }).eq("id", pari.id);
                   // Donne un coup piñata aux deux joueurs (user1 et user2)
