@@ -17,9 +17,9 @@ const SPECIALS = [
     slug: "moracle-genie",
     title: "🧞‍♂️ Moracle, le Génie Déchu",
     cover: "/specials/moracle-cover.png",
-    until: "À venir",
-    description: "Chaque défaite t’offre un vœu… souvent nul, parfois rentable."
-    // pas de link
+    until: "Disponible jusqu’au 31 juillet",
+    description: "Chaque défaite t’offre un vœu… souvent nul, parfois rentable.",
+    link: "/moracle"
   }
 ];
 
@@ -35,7 +35,7 @@ export default function SpecialsPage() {
   };
   return (
     <div className="min-h-screen bg-[#0B0F1C] py-6 px-3 sm:px-0 flex flex-col items-center">
-      <h1 className="text-3xl sm:text-4xl font-extrabold text-amber-400 mb-7 text-center drop-shadow-glow flex items-center gap-2">
+      <h1 className="text-xl sm:text-2xl font-extrabold text-amber-400 mb-7 text-center drop-shadow-glow flex items-center gap-1">
         <span>🎯</span> Jeux & défis du moment
       </h1>
       <div className="w-full max-w-xl flex flex-col gap-7">
@@ -44,7 +44,7 @@ export default function SpecialsPage() {
             {evt.link ? (
               <button
                 type="button"
-                onClick={evt.slug === "pari-pinata" ? handleGoToPinata : undefined}
+                onClick={evt.slug === "pari-pinata" ? handleGoToPinata : evt.slug === "moracle-genie" ? () => router.push('/moracle') : undefined}
                 className="block relative w-full focus:outline-none"
                 style={{ aspectRatio: '2/1' }}
                 tabIndex={0}
@@ -76,10 +76,10 @@ export default function SpecialsPage() {
                 <span className="text-xs text-cyan-300 font-semibold whitespace-nowrap">{evt.until}</span>
               </div>
               <p className="text-gray-300 text-sm mb-2">{evt.description}</p>
-              {evt.link && evt.slug === "pari-pinata" ? (
+              {evt.link ? (
                 <button
                   type="button"
-                  onClick={handleGoToPinata}
+                  onClick={evt.slug === "pari-pinata" ? handleGoToPinata : evt.slug === "moracle-genie" ? () => router.push('/moracle') : undefined}
                   className="inline-block w-fit bg-amber-400 hover:bg-amber-300 text-black font-bold px-5 py-2 rounded-xl shadow-lg transition disabled:opacity-60 text-base"
                 >
                   Découvrir

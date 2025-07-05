@@ -77,6 +77,34 @@ export default function PariTransactionItem({ tx, user, badgeColors, typeLabels,
         }
       ]);
       await supabase.from("paris").update({ statut: "terminé", gagnant_uid: winnerUid }).eq("id", pari.id);
+
+      // Création du voeu Moracle pour le perdant
+      const joueur1Uid = pari.joueur1_uid || (pari.joueur1 && pari.joueur1.uid);
+      const joueur2Uid = pari.joueur2_uid || (pari.joueur2 && pari.joueur2.uid);
+      const perdantUid = joueur1Uid === winnerUid ? joueur2Uid : joueur1Uid;
+      if (perdantUid && typeof perdantUid === 'string' && typeof pari.id === 'string') {
+        try {
+          // Préparation des données pour debug
+          const wishPayload = {
+            user_uid: typeof perdantUid === 'string' ? perdantUid : String(perdantUid),
+            related_bet_id: typeof pari.id === 'string' ? pari.id : String(pari.id),
+            is_consumed: false,
+            result_type: "text",
+            result_text: null,
+            created_at: new Date().toISOString()
+          };
+          console.log('[MORACLE][INSERT][DEBUG] Payload envoyé à Supabase:', wishPayload);
+          const { error } = await supabase.from('moracle_wishes').insert(wishPayload);
+          if (error) {
+            console.error('[MORACLE][INSERT] Erreur Supabase', error);
+            setWinnerActionMsg('Erreur création voeu Moracle : ' + (error.message || JSON.stringify(error)));
+          }
+        } catch (err) {
+          console.error('[MORACLE][INSERT] Exception', err);
+          setWinnerActionMsg('Erreur création voeu Moracle (exception JS)');
+        }
+      }
+
       setWinnerActionMsg("Le gagnant a été défini et les gains distribués !");
       setShowWinnerChoice(false);
       // Play victory sound if the user is the winner

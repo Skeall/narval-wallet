@@ -30,6 +30,56 @@ import { useRef } from "react";
 import LiveCountdown from "../components/LiveCountdown";
 
 export default function PinataPage() {
+  // Nouvel état pour le dernier gagnant de la piñata précédente
+  // Tableau pour les 3 derniers gagnants
+  const [lastWinners, setLastWinners] = useState<Array<{
+    pseudo: string;
+    avatar: string | null;
+    montant: number;
+  }>>([]);
+
+  // Récupère les 3 dernières piñatas terminées et leurs gagnants
+  useEffect(() => {
+    const fetchLastWinners = async () => {
+      // 3 dernières piñatas terminées
+      const { data: pinatas, error: pinataError } = await supabase
+        .from('pinata')
+        .select('*')
+        .eq('statut', 'terminee')
+        .order('date_creation', { ascending: false })
+        .limit(3);
+      if (!pinatas || pinatas.length === 0) return;
+      const winners: Array<{ pseudo: string; avatar: string | null; montant: number; }> = [];
+      for (const p of pinatas) {
+        if (!p.joueur_gagnant_id) continue;
+        // Récupère l'utilisateur gagnant
+        const { data: userData } = await supabase
+          .from('users')
+          .select('pseudo, avatar')
+          .eq('uid', p.joueur_gagnant_id)
+          .single();
+        // Récupère la transaction de reward
+        const { data: tx } = await supabase
+          .from('transactions')
+          .select('montant')
+          .eq('type', 'pinata')
+          .eq('to', p.joueur_gagnant_id)
+          .order('date', { ascending: false })
+          .limit(1)
+          .single();
+        if (userData && tx && typeof tx.montant === 'number') {
+          winners.push({
+            pseudo: userData.pseudo,
+            avatar: userData.avatar,
+            montant: tx.montant
+          });
+        }
+      }
+      setLastWinners(winners);
+    };
+    fetchLastWinners();
+  }, []);
+
   // ...
   const [debugInfo, setDebugInfo] = useState<any>(null);
   const router = useRouter();
@@ -423,7 +473,7 @@ export default function PinataPage() {
 
   return (
     <>
-
+      {/* Tout le contenu dans un seul fragment parent */}
       {/* Intro vidéo plein écran */}
       {showIntro && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
@@ -470,7 +520,28 @@ export default function PinataPage() {
           )}
         </div>
       )}
-      <div className={`min-h-screen flex flex-col items-center justify-center bg-[#0B0F1C] text-white px-2 py-8 relative${showIntro ? ' pointer-events-none select-none opacity-0' : ''}`}>
+      {/* Bloc principal page pinata */}
+      <div className="min-h-screen bg-[#0B0F1C] flex flex-col items-center justify-start pt-4">
+        {/* 3 derniers gagnants discrets (piñata précédente) */}
+        {lastWinners.length > 0 && (
+          <div className="flex flex-col items-center mb-2 opacity-70">
+            <span className="text-base font-bold text-amber-400 mb-1">Les 3 derniers gagnants</span>
+            <div className="flex flex-row items-end justify-center gap-4">
+              {lastWinners.slice().reverse().map((w, i) => (
+                <div key={i} className="flex flex-col items-center">
+                  <img
+                    src={w.avatar || '/default-avatar.png'}
+                    alt={w.pseudo}
+                    className="w-10 h-10 rounded-full object-cover border border-gray-700 mb-1"
+                  />
+                  <span className="text-[11px] text-gray-400 font-semibold truncate max-w-[70px] text-center">{w.pseudo}</span>
+                  <span className="text-xs text-gray-400">+{w.montant} narval</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      <div className={`w-full max-w-md mx-auto bg-[#181F32] rounded-2xl shadow-lg p-6 flex flex-col items-center text-white px-2 py-8 relative${showIntro ? ' pointer-events-none select-none opacity-0' : ''}`}>
       {/* Bouton retour home */}
       <button
         onClick={() => router.push("/")}
@@ -640,7 +711,7 @@ export default function PinataPage() {
 
     </div>
   </div>
+    </div>
     </>
   );
 }
-
