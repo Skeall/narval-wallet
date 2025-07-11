@@ -100,24 +100,32 @@ export default function MoraclePage() {
     fetchHistory();
   }, [result]);
 
-  const handleWish = async () => {
-    if (!user || wishes.length === 0 || playing) return;
-    setPlaying(true);
-    audioRef.current?.play();
-    // Tirage
-    const wish = wishes[0];
-    const tirage = getRandomWish();
-    setResult(tirage);
-    setResultId(wish.id);
-    // Update DB après 6s
-    setTimeout(async () => {
-      await supabase.from("moracle_wishes").update({
-        is_consumed: true,
-        consumed_at: new Date().toISOString(),
-        result_type: tirage.type,
-        result_text: tirage.type === "text" ? tirage.text : null
-      }).eq("id", wish.id);
-      if (tirage.type === "narval") {
+  // Nouvelle version : consommation atomique du vœu dès le clic
+const handleWish = async () => {
+  if (!user || wishes.length === 0 || playing) return;
+  setPlaying(true);
+  audioRef.current?.play();
+  const wish = wishes[0];
+  const tirage = getRandomWish();
+  // Debug : log tirage et wish
+  console.debug('[MORACLE] Tirage du vœu', { wish, tirage });
+  // MAJ immédiate du vœu en base pour éviter l'exploit (reload)
+  const { error: consumeError } = await supabase.from("moracle_wishes").update({
+    is_consumed: true,
+    consumed_at: new Date().toISOString(),
+    result_type: tirage.type,
+    result_text: tirage.type === "text" ? tirage.text : null
+  }).eq("id", wish.id);
+  if (consumeError) {
+    console.error('[MORACLE] Erreur MAJ vœu', consumeError);
+    setPlaying(false);
+    return;
+  }
+  setResult(tirage);
+  setResultId(wish.id);
+  // Affiche la récompense 6s puis applique les effets (narval, refresh, etc)
+  setTimeout(async () => {
+    if (tirage.type === "narval") {
         // Incrémente le solde utilisateur côté client
         const { data: userData, error: fetchError } = await supabase
           .from('users')
@@ -135,6 +143,18 @@ export default function MoraclePage() {
           if (updateError) {
             console.error('[MORACLE][SOLDE] Erreur update solde utilisateur', updateError);
           } else {
+            // Ajoute la transaction Moracle dans l'historique du portefeuille
+            const { error: txError } = await supabase.from('transactions').insert({
+              type: 'moracle',
+              from: null,
+              to: user.id,
+              montant: 1,
+              description: "Moracle t’a envoyé 1 narval",
+              date: new Date().toISOString(),
+            });
+            if (txError) {
+              console.error('[MORACLE][TX] Erreur création transaction Moracle', txError);
+            }
             // Rafraîchit le user pour afficher le nouveau solde
             const { data: refreshedUser, error: refreshError } = await supabase
               .from('users')

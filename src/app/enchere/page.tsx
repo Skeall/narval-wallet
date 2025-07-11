@@ -276,11 +276,12 @@ function EncherePage() {
         ) : (
           <>
             <div className="flex flex-col md:flex-row gap-6 items-center w-full justify-center mt-4 mb-4">
+              {/* Affichage image du lot : object-contain pour éviter le crop, responsive et esthétique */}
               <img
                 src={enchere.lot_image}
                 alt={enchere.lot_title}
-                className="w-32 h-32 md:w-40 md:h-40 object-cover rounded-2xl shadow-2xl drop-shadow-xl bg-slate-800"
-                style={{ background: "transparent" }}
+                className="w-32 md:w-40 max-w-xs max-h-56 object-contain rounded-2xl shadow-2xl drop-shadow-xl bg-slate-800"
+                style={{ background: "linear-gradient(135deg, #1e293b 60%, #334155 100%)" }}
               />
               <div className="flex-1 min-w-0 flex flex-col gap-2 justify-center items-center">
                 <div className="text-2xl md:text-3xl font-bold text-yellow-300 text-center mb-1">{enchere.lot_title}</div>

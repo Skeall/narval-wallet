@@ -19,6 +19,8 @@ interface Transaction {
   date: string;
 }
 
+import NewAuctionButton from "./NewAuctionButton";
+
 export default function AdminPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -231,6 +233,9 @@ export default function AdminPage() {
           {groupFeedback && <div className="mt-4 text-yellow-200 font-semibold text-center">{groupFeedback}</div>}
         </div>
       </div>
+      {/* Ajout rapide d'une nouvelle enchère */}
+      {/* Debug: bouton pour créer une enchère test "1 carte aléatoire" */}
+      <NewAuctionButton onCreated={fetchUsers} />
     </div>
   );
 }
