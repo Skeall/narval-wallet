@@ -9,7 +9,8 @@ const SPECIALS = [
     slug: "pari-pinata",
     title: "Pari Piñata",
     cover: "/specials/pinata-pari-cover.jpg",
-    until: "Disponible jusqu'au 31 juillet",
+    // debug: updated availability date to 31 décembre (per request)
+    until: "Disponible jusqu'au 31 décembre",
     description: "Fais péter la piñata et repars avec des narvals.",
     link: "/pinata"
   },
@@ -17,7 +18,8 @@ const SPECIALS = [
     slug: "moracle-genie",
     title: "🧞‍♂️ Moracle, le Génie Déchu",
     cover: "/specials/moracle-cover.png",
-    until: "Disponible jusqu’au 31 juillet",
+    // debug: updated availability date to 31 décembre (per request)
+    until: "Disponible jusqu’au 31 décembre",
     description: "Chaque défaite t’offre un vœu… souvent nul, parfois rentable.",
     link: "/moracle"
   }

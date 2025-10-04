@@ -55,6 +55,12 @@ export default function EventsPage() {
   const filteredEvents = events.filter(ev =>
     filter === "upcoming" ? new Date(ev.date) >= now : new Date(ev.date) < now
   );
+  // debug: ensure sort order - upcoming ascending, past descending (most recent first)
+  const sortedEvents = [...filteredEvents].sort((a, b) => {
+    const da = new Date(a.date).getTime();
+    const db = new Date(b.date).getTime();
+    return filter === "past" ? db - da : da - db;
+  });
 
   function formatDate(dateStr: string, noHour = false) {
     const d = new Date(dateStr);
@@ -110,7 +116,7 @@ export default function EventsPage() {
         ) : filteredEvents.length === 0 ? (
           <div className="text-center text-gray-400 py-12">Aucun événement à afficher.</div>
         ) : (
-          filteredEvents.map(ev => {
+          sortedEvents.map(ev => {
             const creator = userByUid[ev.creator_uid];
             return (
               <div

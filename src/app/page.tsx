@@ -9,6 +9,7 @@ import { LooseSoundProvider } from "./LooseSoundProvider";
 import { PariSoundProvider } from "./PariSoundProvider";
 import EnchereDuMoisHomeSection from "./EnchereDuMoisHomeSection";
 import ToastNotification from "./ToastNotification";
+import NewsModal, { NewsItem } from "./components/NewsModal";
 
 interface UserData {
   uid: string;
@@ -24,6 +25,9 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [showTransferToast, setShowTransferToast] = useState(false);
   const [transferToastMsg, setTransferToastMsg] = useState("");
+  // debug: news modal state
+  const [newsOpen, setNewsOpen] = useState(false);
+  const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
   const router = useRouter();
 
   // Toast transfert reçu (notification visuelle)
@@ -74,6 +78,41 @@ export default function Home() {
     checkLastTransfer();
   }, [user]);
 
+  // debug: fetch last 30 days news and decide if we should show the modal
+  useEffect(() => {
+    const fetchNews = async () => {
+      try {
+        const now = new Date();
+        const past30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        const iso = past30.toISOString();
+        const { data, error } = await supabase
+          .from("news")
+          .select("id, title, description, image_url, created_at")
+          .gte("created_at", iso)
+          .order("created_at", { ascending: false });
+        if (error) {
+          console.log("[News][fetch] error:", error);
+          return;
+        }
+        const items = (data || []) as NewsItem[];
+        setNewsItems(items);
+        // decide visibility based on last seen timestamp
+        if (items.length > 0) {
+          const latest = items[0].created_at;
+          const lastSeen = localStorage.getItem("news_last_seen_created_at");
+          console.log("[News] latest:", latest, "lastSeen:", lastSeen);
+          if (!lastSeen || latest > lastSeen) {
+            setNewsOpen(true);
+          }
+        }
+      } catch (e) {
+        console.log("[News][fetch] exception:", e);
+      }
+    };
+    // Fetch news right away when app loads
+    fetchNews();
+  }, []);
+
   useEffect(() => {
     const fetchUser = async () => {
       const {
@@ -113,6 +152,22 @@ export default function Home() {
         <VictorySoundProvider>
         <div className="min-h-screen flex flex-col items-center justify-center bg-[#0B0F1C] text-white relative">
 
+        {/* News modal */}
+        <NewsModal
+          items={newsItems}
+          open={newsOpen}
+          onClose={() => {
+            try {
+              // persist last seen as the newest created_at
+              const latest = newsItems[0]?.created_at;
+              if (latest) {
+                localStorage.setItem("news_last_seen_created_at", latest);
+              }
+            } catch {}
+            setNewsOpen(false);
+          }}
+        />
+
         {/* Toast transfert reçu */}
         {showTransferToast && (
           <ToastNotification message={transferToastMsg} onClose={() => setShowTransferToast(false)} />
@@ -135,14 +190,17 @@ export default function Home() {
                 <span className="text-base font-medium text-gray-300 leading-tight whitespace-nowrap">Salut <span role="img" aria-label="wave">👋</span> <span className="text-white font-semibold">{user?.pseudo}</span></span>
               </div>
             </div>
-            {/* Groupe Piñata + notification côte à côte */}
+            {/* Groupe méga + notification côte à côte */}
             <div className="flex items-center gap-0">
+              {/* debug: replaced Piñata icon with megaphone to open News manually */}
               <button
-                onClick={() => { sessionStorage.setItem("unmuteIntro", "1"); router.push('/pinata'); }}
-                className="bg-transparent p-0 m-0 hover:bg-transparent focus:outline-none flex items-center justify-center"
-                aria-label="Aller à la Piñata"
+                onClick={() => setNewsOpen(true)}
+                className="p-2 rounded-full hover:bg-[#232B42] transition"
+                aria-label="Voir les nouveautés"
+                title="Nouveautés"
               >
-                <img src="/iconpinata.png" alt="Piñata" className="w-6 h-6 object-contain" />
+                {/* debug: replaced SVG by PNG icon from /public/icons */}
+                <img src="/icons/megaphone.png" alt="Nouveautés" className="w-6 h-6 object-contain" />
               </button>
               <div className="relative flex-shrink-0">
                 <button
@@ -184,32 +242,7 @@ export default function Home() {
             </button>
           </div>
 
-          {/* Pot commun en bas */}
-          <div className="w-full mt-10">
-            <div className="flex items-center bg-[#232B42] rounded-2xl p-4 shadow-lg">
-              {/* Booster image */}
-              <div className="w-16 h-24 rounded-xl overflow-hidden flex-shrink-0 bg-gradient-to-tr from-blue-600 to-sky-400 flex items-center justify-center mr-4">
-                <img
-                  src="/card.png"
-                  alt="Booster"
-                  className="object-cover w-full h-full"
-                />
-              </div>
-              <div className="flex-1 flex flex-col justify-between">
-                <div className="font-bold text-lg text-sky-300">Nouvelle édition en vue !</div>
-                <div className="text-xs text-gray-300 mt-1 mb-3">Quand le pot commun est complet, une nouvelle série de cartes sort. À vous de jouer <span role="img" aria-label="eyes">👀</span></div>
-                <div className="w-full flex items-center gap-2">
-                  <div className="flex-1 h-3 bg-[#1C2233] rounded-full overflow-hidden relative">
-                    <div
-                      className="h-full bg-gradient-to-r from-sky-400 to-blue-600 rounded-full transition-all duration-700"
-                      style={{ width: `${540 / 1500 * 100}%` }}
-                    ></div>
-                  </div>
-                  <div className="text-xs font-semibold text-sky-200 ml-2 whitespace-nowrap">540 / 1500</div>
-                </div>
-              </div>
-            </div>
-          </div>
+          {/* debug: removed 'Nouvelle édition en vue !' promo card as requested */}
           {/* Section Paris en cours (en bas de la home) */}
           {user && (
             <ParisEnCoursHomeSection userId={user.uid} userPseudo={user.pseudo} />
