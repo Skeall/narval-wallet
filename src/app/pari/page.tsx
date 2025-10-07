@@ -8,6 +8,8 @@ interface User {
   uid: string;
   pseudo: string;
   solde: number;
+  // optional URL/path to avatar image in DB
+  avatar?: string;
 }
 
 function PariPage() {
@@ -16,6 +18,12 @@ function PariPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User|null>(null);
   const [selectedOpponent, setSelectedOpponent] = useState<string>("");
+  // debug: track recent opponents for quick selection (last 4 unique)
+  const [recentOpponents, setRecentOpponents] = useState<User[]>([]);
+  // debug: toggle full selector (dropdown) when clicking "+"
+  const [showFullSelector, setShowFullSelector] = useState<boolean>(false);
+  // debug: simple pulse animation flag per selected uid
+  const [selectedPulseUid, setSelectedPulseUid] = useState<string>("");
   const [montant, setMontant] = useState(0);
   const [description, setDescription] = useState("");
   const [message, setMessage] = useState("");
@@ -33,15 +41,48 @@ function PariPage() {
       // Récupérer infos user connecté
       const { data: userData } = await supabase
         .from("users")
-        .select("uid, pseudo, solde")
+        .select("uid, pseudo, solde, avatar")
         .eq("uid", user.id)
         .single();
       setCurrentUser(userData);
       // Récupérer tous les autres users
       const { data: allUsers } = await supabase
         .from("users")
-        .select("uid, pseudo, solde");
-      setUsers((allUsers || []).filter((u: User) => u.uid !== user.id));
+        .select("uid, pseudo, solde, avatar");
+      const allOtherUsers: User[] = (allUsers || []).filter((u: User) => u.uid !== user.id);
+      setUsers(allOtherUsers);
+
+      // debug log
+      console.debug("[Pari] currentUser:", userData);
+      console.debug("[Pari] allOtherUsers count:", allOtherUsers.length);
+
+      // Récupérer les 4 derniers adversaires uniques depuis la table "paris"
+      try {
+        const { data: recentBets, error: recentErr } = await supabase
+          .from("paris")
+          .select("joueur1_uid, joueur2_uid, date")
+          .or(`joueur1_uid.eq.${user.id},joueur2_uid.eq.${user.id}`)
+          .order("date", { ascending: false })
+          .limit(20); // sécurité: on prend jusqu'à 20 derniers paris pour en extraire 4 uniques
+        if (recentErr) {
+          console.debug("[Pari] recent opponents fetch error:", recentErr.message);
+        }
+        const uniques: string[] = [];
+        (recentBets || []).forEach((row: any) => {
+          const otherUid = row.joueur1_uid === user.id ? row.joueur2_uid : row.joueur1_uid;
+          if (otherUid && !uniques.includes(otherUid)) {
+            uniques.push(otherUid);
+          }
+        });
+        const recentUsers = uniques
+          .map((uid) => allOtherUsers.find((u) => u.uid === uid))
+          .filter((u): u is User => Boolean(u))
+          .slice(0, 4);
+        setRecentOpponents(recentUsers);
+        console.debug("[Pari] recentOpponents:", recentUsers.map((u) => u.pseudo));
+      } catch (e) {
+        console.debug("[Pari] recent opponents exception:", e);
+      }
       setLoading(false);
     };
     fetchUsers();
@@ -65,19 +106,96 @@ function PariPage() {
       <div className="bg-gray-800 rounded-lg p-8 shadow-md w-full max-w-md mt-12">
         <h1 className="text-2xl font-bold text-center text-cyan-400 mb-6">Lancer un pari</h1>
         <form className="flex flex-col gap-4">
-          <label className="text-gray-200">Adversaire</label>
-          <select
-            className="p-2 rounded bg-gray-700 text-gray-100"
-            value={selectedOpponent}
-            onChange={e => setSelectedOpponent(e.target.value)}
-            required
-          >
-            <option value="">-- Choisir un joueur --</option>
-            {users.map(u => (
-              <option key={u.uid} value={u.uid}>{u.pseudo}</option>
-            ))}
-          </select>
-          <label className="text-gray-200">Montant</label>
+          {/* Nouveau label fun (remplace l'ancien champ Adversaire + select) */}
+          <div className="text-gray-200 text-base font-medium">Tu veux défier qui ? 👇</div>
+
+          {/* Rangée d'avatars: 4 derniers adversaires + bouton "+" */}
+          <div className="flex items-center justify-center gap-4 mt-1">
+            {/* Cas avec adversaires récents */}
+            {recentOpponents.length > 0 && (
+              recentOpponents.map((u) => {
+                const isSelected = selectedOpponent === u.uid;
+                return (
+                  <button
+                    key={u.uid}
+                    type="button"
+                    title={u.pseudo}
+                    onClick={() => {
+                      console.debug("[Pari] avatar clicked:", u.uid, u.pseudo);
+                      setSelectedOpponent(u.uid);
+                      setShowFullSelector(false);
+                      setSelectedPulseUid(u.uid);
+                      // petit pulse temporaire
+                      setTimeout(() => setSelectedPulseUid(""), 300);
+                    }}
+                    className={
+                      `relative w-14 h-14 rounded-full overflow-hidden bg-gradient-to-br from-slate-600 to-slate-700 text-cyan-200 flex items-center justify-center ` +
+                      `hover:from-slate-500 hover:to-slate-600 transition transform ` +
+                      (isSelected ? " ring-2 ring-cyan-400 scale-105 " : "") +
+                      (selectedPulseUid === u.uid ? " animate-pulse " : "")
+                    }
+                    aria-label={`Choisir ${u.pseudo}`}
+                  >
+                    {/* Affiche l'avatar si disponible, sinon fallback initiale */}
+                    {u.avatar ? (
+                      <img
+                        src={u.avatar}
+                        alt={`Avatar de ${u.pseudo}`}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-lg font-bold">
+                        {u.pseudo?.charAt(0)?.toUpperCase() || "?"}
+                      </span>
+                    )}
+                  </button>
+                );
+              })
+            )}
+
+            {/* Bouton + pour ouvrir le sélecteur complet */}
+            <button
+              type="button"
+              title="Choisir un autre joueur"
+              onClick={() => {
+                console.debug("[Pari] plus clicked: open full selector");
+                setShowFullSelector((v) => !v);
+              }}
+              className="w-14 h-14 rounded-full border-2 border-cyan-400 text-cyan-400 flex items-center justify-center hover:bg-cyan-500/10 transition"
+              aria-label="Ouvrir le sélecteur complet"
+            >
+              <span className="text-2xl font-bold">+</span>
+            </button>
+          </div>
+
+          {/* Afficher le pseudo sélectionné sous la rangée d'avatars */}
+          {selectedOpponent && (
+            <div className="text-center text-cyan-300 text-sm -mt-1">
+              {users.find((u) => u.uid === selectedOpponent)?.pseudo}
+            </div>
+          )}
+
+          {/* Si 0..4 adversaires récents: le layout ci-dessus reste centré par défaut */}
+
+          {/* Sélecteur complet (dropdown original) - visible uniquement après clic "+" */}
+          {showFullSelector && (
+            <select
+              className="p-2 rounded bg-gray-700 text-gray-100"
+              value={selectedOpponent}
+              onChange={e => {
+                console.debug("[Pari] selected from full selector:", e.target.value);
+                setSelectedOpponent(e.target.value);
+              }}
+              required
+            >
+              <option value="">-- Choisir un joueur --</option>
+              {users.map(u => (
+                <option key={u.uid} value={u.uid}>{u.pseudo}</option>
+              ))}
+            </select>
+          )}
+          {/* UI text: updated label per request */}
+          <label className="text-gray-200">Tu mises combien ?</label>
           <div className="flex flex-col items-center gap-2 mb-2">
             <div className="text-3xl font-bold text-cyan-300 mb-2">₦{montant}</div>
             <div className="flex items-center w-full gap-2">
@@ -104,8 +222,9 @@ function PariPage() {
             </div>
             <div className="text-xs text-gray-400">Max : ₦{currentUser ? currentUser.solde : 100}</div>
           </div>
+          {/* UI text: updated textarea label per request */}
           <label className="flex items-center justify-between text-gray-200 mt-2">
-            <span>📝 Sujet du pari / condition de victoire</span>
+            <span>Sur quoi vous misez ? 🎯</span>
             <span className="ml-2 bg-gray-600 text-xs text-gray-200 px-2 py-0.5 rounded-full">facultatif</span>
           </label>
           <textarea
@@ -118,6 +237,7 @@ function PariPage() {
             style={{ fontSize: '0.95rem' }}
           />
           <div className="text-right text-xs text-gray-400 mb-[-0.5rem]">{description.length}/140</div>
+          {/* UI text: updated submit button per request */}
           <button
             type="button"
             className="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-2 px-4 rounded mt-4 disabled:opacity-50"
@@ -192,7 +312,7 @@ function PariPage() {
               setLoading(false);
             }}
           >
-            {loading ? "Patiente..." : "Lancer le pari"}
+            {loading ? "Patiente..." : "Que le meilleur gagne ! 🔥"}
           </button>
         </form>
         {message && <div className="mt-6 text-center text-cyan-300">{message}</div>}

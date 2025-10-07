@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { supabase } from "@/utils/supabaseClient";
-import Image from "next/image";
+import LazyRevealImage from "../components/LazyRevealImage";
 
 interface Souvenir {
   id: string;
@@ -120,10 +120,16 @@ export default function SouvenirsPage() {
   const [loading, setLoading] = useState(true);
   const [modalSouvenir, setModalSouvenir] = useState<Souvenir | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  // Perf: pagination & lazy loading to avoid initial freeze
+  const PAGE_SIZE = 24; // simple, small pages for fluid feel
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
     fetchUsers();
-    fetchSouvenirs();
+    // first page load
+    fetchSouvenirs(true);
   }, []);
 
 
@@ -133,14 +139,42 @@ export default function SouvenirsPage() {
     setUsers(data || []);
   };
 
-  const fetchSouvenirs = async () => {
-    setLoading(true);
-    const { data } = await supabase
-      .from("souvenirs")
-      .select("*")
-      .order("created_at", { ascending: false });
-    setSouvenirs(data || []);
-    setLoading(false);
+  // Paginated fetch. If reset=true, reload from page 0.
+  const fetchSouvenirs = async (reset: boolean = false) => {
+    try {
+      if (reset) {
+        console.debug("[Souvenirs] Reset list and load first page");
+        setLoading(true);
+        setPage(0);
+        setHasMore(true);
+        setSouvenirs([]);
+      } else {
+        setLoadingMore(true);
+      }
+
+      const currentPage = reset ? 0 : page + 1;
+      const from = currentPage * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+
+      const { data, error } = await supabase
+        .from("souvenirs")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .range(from, to);
+      if (error) {
+        console.debug("[Souvenirs] fetch page error:", error.message);
+      }
+      const rows = data || [];
+      // Append or set
+      setSouvenirs(prev => reset ? rows : [...prev, ...rows]);
+      setPage(currentPage);
+      setHasMore(rows.length === PAGE_SIZE);
+    } catch (e) {
+      console.debug("[Souvenirs] fetch exception:", e);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
   };
 
   // Filtrage : n'affiche que les souvenirs où TOUS les selectedUsers sont présents dans tagged_users
@@ -197,6 +231,25 @@ export default function SouvenirsPage() {
     });
   }, []);
 
+  // Infinite scroll sentinel
+  const [sentinelEl, setSentinelEl] = useState<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!sentinelEl || !hasMore || loadingMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            console.debug("[Souvenirs] Sentinel visible → load more");
+            fetchSouvenirs(false);
+          }
+        });
+      },
+      { root: null, rootMargin: "300px", threshold: 0.01 }
+    );
+    observer.observe(sentinelEl);
+    return () => observer.disconnect();
+  }, [sentinelEl, hasMore, loadingMore]);
+
   return (
     <div className="min-h-screen bg-[#0B0F1C] text-white flex flex-col items-center pb-8">
       {/* Header */}
@@ -244,11 +297,11 @@ export default function SouvenirsPage() {
                     aria-label="Voir le souvenir"
                   >
                     {souvenir.media_type === "image" && (
-                      <img
+                      <LazyRevealImage
                         src={souvenir.media_url}
-                        alt="souvenir"
-                        className="w-full h-full object-cover aspect-square"
-                        draggable={false}
+                        alt={souvenir.text || "souvenir"}
+                        className="relative w-full h-full"
+                        imgClassName="aspect-square"
                       />
                     )}
                   </button>
@@ -266,6 +319,10 @@ export default function SouvenirsPage() {
                   )}
                 </div>
               ))}
+              {/* Infinite scroll sentinel */}
+              {hasMore && (
+                <div ref={setSentinelEl} className="col-span-3 h-8" aria-hidden />
+              )}
             </div>
           )}
         </div>
@@ -300,9 +357,14 @@ export default function SouvenirsPage() {
               </button>
             )}
             {/* Media grand */}
-            <div className="w-full aspect-square bg-black mb-2">
+            <div className="w-full aspect-square bg-black mb-2 relative rounded-xl overflow-hidden">
               {modalSouvenir.media_type === "image" ? (
-                <img src={modalSouvenir.media_url} alt={modalSouvenir.text || "souvenir"} className="object-cover w-full h-full rounded-xl" />
+                <LazyRevealImage
+                  src={modalSouvenir.media_url}
+                  alt={modalSouvenir.text || "souvenir"}
+                  className="relative w-full h-full"
+                  imgClassName="object-cover w-full h-full rounded-xl"
+                />
               ) : (
                 <video src={modalSouvenir.media_url} controls className="object-cover w-full h-full rounded-xl" />
               )}

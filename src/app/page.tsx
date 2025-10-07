@@ -242,6 +242,41 @@ export default function Home() {
             </button>
           </div>
 
+          {/* Halloween promo block - under quick actions */}
+          {/* Debug: lightweight, no extra deps; subtle festive style with orange accents */}
+          <div className="w-full -mt-1">
+            <div className="relative rounded-2xl px-4 py-4 bg-gradient-to-br from-[#2A1F1F] to-[#1C1410] border border-orange-500/30 shadow-[0_0_18px_1px_rgba(249,115,22,0.15)] overflow-hidden">
+              {/* Decorative emojis (non-blocking) */}
+              <div className="pointer-events-none select-none absolute -top-2 -right-2 text-4xl opacity-20">🎃</div>
+              <div className="pointer-events-none select-none absolute -bottom-2 -left-2 text-3xl opacity-15">👻</div>
+
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 text-2xl" aria-hidden>🕸️</div>
+                <div className="flex-1">
+                  <div className="text-[17px] font-semibold text-orange-300 leading-tight">
+                    🕸️ Débloque ton skin Halloween !
+                  </div>
+                  <div className="mt-1 text-sm text-orange-100/90">
+                    Transforme ton avatar en version Halloween.<br/>
+                    <span className="text-orange-300/90">🎃 Disponible jusqu’au 31 octobre</span>
+                  </div>
+                  <div className="mt-3">
+                    <a
+                      href="https://tally.so/r/w2QleL"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => console.log('[Home][Halloween] CTA clicked')}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-bold shadow-lg transition focus:outline-none focus:ring-2 focus:ring-amber-300"
+                      aria-label="Demander mon skin via Tally"
+                    >
+                      Demander mon skin 🎁
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* debug: removed 'Nouvelle édition en vue !' promo card as requested */}
           {/* Section Paris en cours (en bas de la home) */}
           {user && (
