@@ -21,6 +21,7 @@ interface User {
   uid: string;
   pseudo: string;
   avatar: string;
+  birthday?: string; // DATE (YYYY-MM-DD)
 }
 
 export default function EventsPage() {
@@ -43,7 +44,8 @@ export default function EventsPage() {
       setLoading(false);
     };
     const fetchUsers = async () => {
-      const { data } = await supabase.from("users").select("*");
+      // Debug: fetch avatar + birthday for anniversaires
+      const { data } = await supabase.from("users").select("uid,pseudo,avatar,birthday");
       setUsers(data || []);
     };
     fetchEvents();
@@ -61,6 +63,47 @@ export default function EventsPage() {
     const db = new Date(b.date).getTime();
     return filter === "past" ? db - da : da - db;
   });
+
+  // ===== Anniversaires à venir (30 jours) =====
+  const today = new Date(); // client clock; display/use Europe/Paris when formatting
+  function parseBirth(b: string | undefined): { m: number; d: number } | null {
+    if (!b) return null;
+    // expected 'YYYY-MM-DD'
+    const parts = b.split("-");
+    if (parts.length < 3) return null;
+    const m = Number(parts[1]);
+    const d = Number(parts[2]);
+    if (!m || !d) return null;
+    return { m, d };
+  }
+  function nextBirthdayDate(bday: string | undefined, ref: Date): Date | null {
+    const pd = parseBirth(bday);
+    if (!pd) return null;
+    const y = ref.getFullYear();
+    // build at noon to avoid DST issues
+    let dt = new Date(y, pd.m - 1, pd.d, 12, 0, 0);
+    if (dt < ref) dt = new Date(y + 1, pd.m - 1, pd.d, 12, 0, 0);
+    return dt;
+  }
+  function daysBetween(a: Date, b: Date) {
+    const ms = b.getTime() - a.getTime();
+    return Math.ceil(ms / (1000 * 60 * 60 * 24));
+  }
+  const upcomingBirthdays = users
+    .map(u => {
+      const next = nextBirthdayDate(u.birthday, today);
+      if (!next) return null;
+      const days = daysBetween(today, next);
+      return { user: u, next, days };
+    })
+    .filter((x): x is { user: User; next: Date; days: number } => !!x)
+    .filter(x => x.days >= 0 && x.days <= 30)
+    .sort((a, b) => a.days - b.days);
+
+  const thisMonthNames = users
+    .map(u => ({ u, pd: parseBirth(u.birthday) }))
+    .filter(x => x.pd && (x.pd!.m === (today.getMonth() + 1)))
+    .map(x => x.u.pseudo);
 
   function formatDate(dateStr: string, noHour = false) {
     const d = new Date(dateStr);
@@ -203,6 +246,60 @@ export default function EventsPage() {
           })
         )}
       </div>
+
+      {/* ===== Bloc Anniversaires à venir (festif) — affiché seulement s'il y a des anniversaires ≤ 30 jours ===== */}
+      {filter === "upcoming" && upcomingBirthdays.length > 0 && (
+        <div className="w-full max-w-xl px-4 mt-3">
+          {/* Debug: rendu du bloc anniversaire uniquement quand 'upcomingBirthdays' n'est pas vide */}
+          <div className="relative rounded-2xl p-4 bg-gradient-to-br from-[#2b1740] via-[#131b32] to-[#0f172a] border border-white/10 shadow-[0_12px_36px_rgba(0,0,0,0.35)] overflow-hidden">
+            {/* Confetti décoratifs */}
+            <div className="pointer-events-none select-none absolute -top-2 -left-2 text-4xl opacity-15">🎉</div>
+            <div className="pointer-events-none select-none absolute -bottom-2 -right-2 text-4xl opacity-15">🎈</div>
+
+            {/* Title */}
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-[15px] font-semibold text-white flex items-center gap-2">
+                <span>🎂</span>
+                <span>Prochains anniversaires</span>
+              </div>
+              <div className="text-[11px] px-2 py-0.5 rounded-full bg-amber-400/15 text-amber-300 border border-amber-300/20">Dans 30 jours</div>
+            </div>
+
+            {/* Horizontal list of upcoming birthdays (festive cards) */}
+            <div className="flex gap-3 overflow-x-auto py-1 pr-2 -mr-2">
+              {upcomingBirthdays.map(({ user: u, next, days }) => {
+                const dayLabel = days === 0 ? "Aujourd'hui" : days === 1 ? "Demain" : `Dans ${days} j`; // UX: plus compact sur mobile
+                const dateLabel = next.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+                const ringClass = days <= 1 ? "ring-rose-300/70" : days <= 7 ? "ring-amber-300/60" : "ring-sky-300/50";
+                return (
+                  <div key={u.uid} className="min-w-[210px] bg-[#0f1526]/90 hover:bg-[#111a2c] transition rounded-xl p-3 border border-white/10 shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-11 h-11 rounded-full overflow-hidden ring-2 ${ringClass} flex-shrink-0 bg-[#0B0F1C]`}> 
+                        {u.avatar ? (
+                          <Image src={u.avatar} alt={u.pseudo} width={44} height={44} className="object-cover w-full h-full" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-xl">🎂</div>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold truncate">{u.pseudo}</div>
+                        <div className="mt-0.5 flex items-center gap-2">
+                          <span className="text-[11px] px-1.5 py-[2px] rounded-full bg-amber-400/15 text-amber-300 border border-amber-300/20">{dateLabel}</span>
+                          <span className="text-[11px] px-1.5 py-[2px] rounded-full bg-sky-400/10 text-sky-300 border border-sky-300/20">{dayLabel}</span>
+                        </div>
+                      </div>
+                    </div>
+                    {/* CTAs retirés: rappel visuel uniquement, pas d'action */}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Liseré festif bas */}
+            <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-rose-400 via-amber-300 to-sky-400 opacity-60" />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
