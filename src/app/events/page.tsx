@@ -31,6 +31,8 @@ export default function EventsPage() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const [currentUserUid, setCurrentUserUid] = useState<string|null>(null);
+  // Window for upcoming birthdays (toggle 30/90 days)
+  const [bdayWindowDays, setBdayWindowDays] = useState<number>(30);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setCurrentUserUid(data.user?.id ?? null));
@@ -97,7 +99,7 @@ export default function EventsPage() {
       return { user: u, next, days };
     })
     .filter((x): x is { user: User; next: Date; days: number } => !!x)
-    .filter(x => x.days >= 0 && x.days <= 30)
+    .filter(x => x.days >= 0 && x.days <= bdayWindowDays)
     .sort((a, b) => a.days - b.days);
 
   const thisMonthNames = users
@@ -262,7 +264,21 @@ export default function EventsPage() {
                 <span>🎂</span>
                 <span>Prochains anniversaires</span>
               </div>
-              <div className="text-[11px] px-2 py-0.5 rounded-full bg-amber-400/15 text-amber-300 border border-amber-300/20">Dans 30 jours</div>
+              <button
+                type="button"
+                className="text-[11px] px-2 py-0.5 rounded-full bg-amber-400/15 text-amber-300 border border-amber-300/20 hover:bg-amber-400/25 transition"
+                onClick={() => {
+                  setBdayWindowDays(d => {
+                    const nd = d === 30 ? 90 : 30;
+                    console.debug('[Events][Birthday] window toggle', d, '→', nd);
+                    return nd;
+                  });
+                }}
+                title="Cliquer pour basculer 30/90 jours"
+                aria-label={`Fenêtre anniversaires: ${bdayWindowDays} jours`}
+              >
+                Dans {bdayWindowDays} jours
+              </button>
             </div>
 
             {/* Horizontal list of upcoming birthdays (festive cards) */}
