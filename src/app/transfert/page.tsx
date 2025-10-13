@@ -11,6 +11,12 @@ export default function TransfertPage() {
   const [user, setUser] = useState<any>(null);
   const [solde, setSolde] = useState<number>(0);
   const [destinataire, setDestinataire] = useState<string>("");
+  // debug: recent recipients (last 4 unique from transactions)
+  const [recentRecipients, setRecentRecipients] = useState<any[]>([]);
+  // debug: toggle full selector visibility via "+"
+  const [showFullSelector, setShowFullSelector] = useState<boolean>(false);
+  // debug: pulse effect on selection
+  const [selectedPulseUid, setSelectedPulseUid] = useState<string>("");
   const [montant, setMontant] = useState<number>(1);
   const [message, setMessage] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -32,9 +38,43 @@ export default function TransfertPage() {
       // Récupère tous les autres users
       const { data: allUsers } = await supabase
         .from("users")
-        .select("uid, pseudo")
+        .select("uid, pseudo, avatar")
         .neq("uid", authUser.id);
-      setUsers(allUsers || []);
+      const others = allUsers || [];
+      setUsers(others);
+
+      // debug logs
+      console.debug("[Transfert] currentUser:", authUser.id);
+      console.debug("[Transfert] others count:", others.length);
+
+      // Récents (4 derniers uniques) depuis transactions 'transfert'
+      try {
+        const { data: txs, error: txErr } = await supabase
+          .from("transactions")
+          .select("from, to, date, type")
+          .eq("type", "transfert")
+          .or(`from.eq.${authUser.id},to.eq.${authUser.id}`)
+          .order("date", { ascending: false })
+          .limit(20); // on scanne 20 dernières pour extraire 4 uniques
+        if (txErr) {
+          console.debug("[Transfert] recent fetch error:", txErr.message);
+        }
+        const uniques: string[] = [];
+        (txs || []).forEach((row: any) => {
+          const otherUid = row.from === authUser.id ? row.to : row.from;
+          if (otherUid && !uniques.includes(otherUid) && otherUid !== authUser.id) {
+            uniques.push(otherUid);
+          }
+        });
+        const recent = uniques
+          .map(uid => others.find(u => u.uid === uid))
+          .filter((u): u is any => Boolean(u))
+          .slice(0, 4);
+        setRecentRecipients(recent);
+        console.debug("[Transfert] recentRecipients:", recent.map((u: any) => u.pseudo));
+      } catch (e) {
+        console.debug("[Transfert] recent exception:", e);
+      }
     };
     fetchUsersAndMe();
   }, []);
@@ -111,20 +151,78 @@ export default function TransfertPage() {
       </button>
       <form onSubmit={handleSubmit} className="bg-[#181E2C] rounded-xl shadow-lg p-8 w-full max-w-md flex flex-col gap-6">
         <h1 className="text-2xl font-bold text-sky-400 mb-2 text-center">Transférer des Narvals</h1>
-        {/* Destinataire */}
+        {/* Destinataire - UI style /pari: avatars récents (4) + bouton "+" */}
         <div>
-          <label className="block mb-2 font-semibold">Destinataire</label>
-          <select
-            className="w-full bg-[#22283A] text-white rounded-lg px-4 py-3 focus:outline-none"
-            value={destinataire}
-            onChange={e => setDestinataire(e.target.value)}
-            required
-          >
-            <option value="">Sélectionner un membre...</option>
-            {users.map(u => (
-              <option key={u.uid} value={u.uid}>{u.pseudo}</option>
-            ))}
-          </select>
+          <div className="text-gray-200 text-base font-medium">Tu veux envoyer à qui ? 👇</div>
+          <div className="flex items-center justify-center gap-4 mt-2">
+            {/* Avatars récents */}
+            {recentRecipients.length > 0 && recentRecipients.map((u: any) => {
+              const isSelected = destinataire === u.uid;
+              return (
+                <button
+                  key={u.uid}
+                  type="button"
+                  title={u.pseudo}
+                  onClick={() => {
+                    console.debug("[Transfert] avatar clicked:", u.uid, u.pseudo);
+                    setDestinataire(u.uid);
+                    setShowFullSelector(false);
+                    setSelectedPulseUid(u.uid);
+                    setTimeout(() => setSelectedPulseUid(""), 300);
+                  }}
+                  className={
+                    `relative w-14 h-14 rounded-full overflow-hidden bg-gradient-to-br from-slate-600 to-slate-700 text-cyan-200 flex items-center justify-center ` +
+                    `hover:from-slate-500 hover:to-slate-600 transition transform ` +
+                    (isSelected ? " ring-2 ring-cyan-400 scale-105 " : "") +
+                    (selectedPulseUid === u.uid ? " animate-pulse " : "")
+                  }
+                  aria-label={`Choisir ${u.pseudo}`}
+                >
+                  {u.avatar ? (
+                    <img src={u.avatar} alt={`Avatar de ${u.pseudo}`} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-lg font-bold">{u.pseudo?.charAt(0)?.toUpperCase() || "?"}</span>
+                  )}
+                </button>
+              );
+            })}
+            {/* Bouton + */}
+            <button
+              type="button"
+              title="Choisir un autre membre"
+              onClick={() => {
+                console.debug("[Transfert] plus clicked: toggle full selector");
+                setShowFullSelector(v => !v);
+              }}
+              className="w-14 h-14 rounded-full border-2 border-cyan-400 text-cyan-400 flex items-center justify-center hover:bg-cyan-500/10 transition"
+              aria-label="Ouvrir le sélecteur complet"
+            >
+              <span className="text-2xl font-bold">+</span>
+            </button>
+          </div>
+          {/* Pseudo sélectionné */}
+          {destinataire && (
+            <div className="text-center text-cyan-300 text-sm mt-1">
+              {users.find(u => u.uid === destinataire)?.pseudo}
+            </div>
+          )}
+          {/* Sélecteur complet visible uniquement après clic "+" */}
+          {showFullSelector && (
+            <select
+              className="mt-3 w-full bg-[#22283A] text-white rounded-lg px-4 py-3 focus:outline-none"
+              value={destinataire}
+              onChange={e => {
+                console.debug("[Transfert] selected from full selector:", e.target.value);
+                setDestinataire(e.target.value);
+              }}
+              required
+            >
+              <option value="">Sélectionner un membre...</option>
+              {users.map(u => (
+                <option key={u.uid} value={u.uid}>{u.pseudo}</option>
+              ))}
+            </select>
+          )}
         </div>
         {/* Montant */}
         <div className="flex flex-col items-center w-full">
