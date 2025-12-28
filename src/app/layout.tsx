@@ -19,6 +19,7 @@ export const metadata: Metadata = {
 };
 
 import BottomNavBar from "./components/BottomNavBar";
+import NoZoom from "./components/NoZoom";
 
 export default function RootLayout({
   children,
@@ -47,6 +48,8 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased pb-20`} 
         style={{ background: '#0B0F1C', color: '#FFFFFF', fontFamily: 'SF Pro, Inter, sans-serif' }}
       >
+        {/* debug: enforce no-zoom listeners */}
+        <NoZoom />
         {children}
         <BottomNavBar />
       </body>
