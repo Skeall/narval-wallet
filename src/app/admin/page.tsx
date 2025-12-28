@@ -234,8 +234,16 @@ export default function AdminPage() {
         </div>
       </div>
       {/* Ajout rapide d'une nouvelle enchère */}
-      {/* Debug: bouton pour créer une enchère test "1 carte aléatoire" */}
-      <NewAuctionButton onCreated={fetchUsers} />
+      {/* debug: bouton dédié pour créer l'enchère Booster fin 01/01/2026 01:00 (CET) */}
+      <NewAuctionButton
+        onCreated={fetchUsers}
+        lotTitle="Booster"
+        lotDescription="Gagne un booster"
+        lotImage="booster homepage.png"
+        currentBid={1}
+        deadlineIso="2026-01-01T00:00:00.000Z"
+        label="Créer l'enchère Booster (fin 01/01/2026 01:00)"
+      />
     </div>
   );
 }
