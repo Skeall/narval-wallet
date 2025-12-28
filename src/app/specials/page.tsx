@@ -6,6 +6,15 @@ import { useEffect, useRef, useState } from "react";
 
 // À uploader dans /public/specials/pinata-pari-cover.jpg (800x400px conseillé, JPG ou WEBP)
 const SPECIALS = [
+  // Mettre l'événement Valise en premier
+  {
+    slug: "valise",
+    title: "Prépare ta valise",
+    cover: "/specials/valise-cover.png",
+    until: "Disponible jusqu’au 24 février",
+    description: "Complète ta valise avant le départ et gagne des Narvals.",
+    link: "/valise"
+  },
   {
     slug: "pari-pinata",
     title: "Pari Piñata",
@@ -23,15 +32,6 @@ const SPECIALS = [
     until: "Disponible jusqu’au 31 décembre",
     description: "Chaque défaite t’offre un vœu… souvent nul, parfois rentable.",
     link: "/moracle"
-  }
-  ,
-  {
-    slug: "valise",
-    title: "Prépare ta valise",
-    cover: "/specials/valise-cover.png",
-    until: "Disponible jusqu’au 24 février",
-    description: "Complète ta valise avant le départ et gagne des Narvals.",
-    link: "/valise"
   }
 ];
 

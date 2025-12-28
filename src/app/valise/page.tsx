@@ -578,36 +578,20 @@ export default function ValisePage() {
             );
           })}
             </div>
-            <div className="mt-4 flex items-center justify-center gap-3">
+            <div className="mt-4 grid grid-cols-2 gap-3">
               <button
-                className="px-4 py-2 rounded-xl bg-yellow-400 text-black font-bold disabled:opacity-50"
+                className="w-full py-3 rounded-2xl bg-gradient-to-r from-amber-300 to-yellow-400 text-black font-extrabold shadow-lg hover:from-amber-200 hover:to-yellow-300 active:scale-[0.99] disabled:opacity-50"
                 disabled={isOver || hasDrawnToday || victory}
                 onClick={handleDraw}
               >
                 🎲 Tirage du jour
               </button>
               <button
-                className="px-4 py-2 rounded-xl bg-cyan-400 text-black font-bold disabled:opacity-50"
+                className="w-full py-3 rounded-2xl bg-gradient-to-r from-cyan-300 to-sky-400 text-black font-extrabold shadow-lg hover:from-cyan-200 hover:to-sky-300 active:scale-[0.99] disabled:opacity-50"
                 disabled={isOver || !canExchangeToday || victory}
                 onClick={() => setShowExchange(true)}
               >
                 🔁 Échanger
-              </button>
-              {/* debug: test-only reset button (will be removed in prod) */}
-              <button
-                className="px-3 py-2 rounded-xl bg-gray-600 hover:bg-gray-500 text-white font-semibold"
-                onClick={handleResetDaily}
-                title="Réinitialiser le tirage du jour (test)"
-              >
-                ♻️ Reset (test)
-              </button>
-              {/* debug: test-only full reset button (will be removed in prod) */}
-              <button
-                className="px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold"
-                onClick={handleResetAll}
-                title="Supprimer tous les objets et vider l'état (test)"
-              >
-                🧹 Reset valise (test)
               </button>
             </div>
           </div>
