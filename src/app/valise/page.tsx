@@ -68,6 +68,16 @@ export default function ValisePage() {
   // intro video state
   const [showIntro, setShowIntro] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  // debug: set of item keys (useful or useless) that appear at least twice (to show recycle)
+  const duplicateKeys = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const it of items) {
+      counts[it.item] = (counts[it.item] || 0) + 1;
+    }
+    const dups = new Set<ItemKey>();
+    Object.entries(counts).forEach(([k, v]) => { if (v >= 2) dups.add(k as ItemKey); });
+    return dups;
+  }, [items]);
 
   // debug: tick clock for UI
   useEffect(() => {
@@ -153,6 +163,24 @@ export default function ValisePage() {
     await supabase.from("valise_events").insert({ type: "complete", uid: user.uid, details: { msg: "valise complétée" }, created_at: new Date().toISOString() });
     setMessage("🎉 Valise complétée ! +6 Narvals");
     await reloadAll();
+  };
+
+  // debug: recycle two identical useless items -> remove both and reset today's draw
+  const handleRecycle = async (key: ItemKey) => {
+    try {
+      if (!user) return;
+      const ids = items.filter(it => it.item === key).slice(0, 2).map(it => it.id);
+      if (ids.length < 2) { setMessage('Recyclage: besoin de 2 objets identiques'); return; }
+      console.debug('[Valise][recycle] removing two', key, ids);
+      await supabase.from('valise_items').delete().in('id', ids);
+      await supabase.from('valise_state').upsert({ uid: user.uid, last_draw_date: null }, { onConflict: 'uid' });
+      await supabase.from('valise_events').insert({ type: 'recycle', uid: user.uid, details: { item: key, count: 2 }, created_at: new Date().toISOString() });
+      setMessage('♻️ Recyclage effectué: tirage du jour réinitialisé');
+      await reloadAll();
+    } catch (e: any) {
+      console.error('[Valise][recycle] error', e);
+      setMessage('Erreur recyclage: ' + (e?.message || e));
+    }
   };
 
   const handleDraw = async () => {
@@ -441,30 +469,6 @@ export default function ValisePage() {
     }
   };
 
-  // debug: test-only – clear the global feed
-  const handleClearFeed = async () => {
-    try {
-      console.debug('[Valise][feed-clear] Attempting RPC valise_clear_feed');
-      const { data, error } = await supabase.rpc('valise_clear_feed');
-      if (error) {
-        console.debug('[Valise][feed-clear] RPC failed, fallback delete all', error);
-        // fallback: may be blocked by RLS if no delete policy
-        const { error: delErr } = await supabase.from('valise_events').delete().neq('id', 0 as any);
-        if (delErr) {
-          setMessage(`Erreur vidage feed (RLS) : ${delErr.message || 'pas d\'autorisation'}`);
-          return;
-        }
-      }
-      // immediate local clear to reflect success
-      setFeed([]);
-      setMessage('Feed vidé (test)');
-      await reloadAll();
-    } catch (e: any) {
-      console.error('[Valise][feed-clear] error', e);
-      setMessage('Erreur vidage feed (test): ' + (e?.message || e));
-    }
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0B0F1C] text-white">Chargement…</div>
@@ -561,6 +565,17 @@ export default function ValisePage() {
                       className="w-full h-full object-contain drop-shadow"
                       draggable={false}
                     />
+                    {/* overlay recycle icon (top-left) when there are duplicate items */}
+                    {!victory && duplicateKeys.has(it.item) && (
+                      <button
+                        className="absolute top-1.5 left-1.5 w-7 h-7 rounded-full bg-emerald-600/80 hover:bg-emerald-500 text-white flex items-center justify-center shadow"
+                        onClick={() => handleRecycle(it.item)}
+                        aria-label={`Recyclage 2 × ${LABEL_BY_KEY[it.item]}`}
+                        title="Recyclage (2×)"
+                      >
+                        ♻️
+                      </button>
+                    )}
                     {/* overlay delete icon (compact, top-right) */}
                     {!victory && (
                       <button
@@ -733,17 +748,7 @@ export default function ValisePage() {
 
       {/* Feed (styled like /moracle) */}
       <div className="w-full max-w-[430px] bg-[#0F172A] rounded-2xl p-3 border border-white/10 mb-6">
-        <div className="flex items-center justify-between mb-2">
-          <div className="text-sm font-bold">Activité</div>
-          {/* debug: test-only clear button */}
-          <button
-            className="text-[11px] px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-white"
-            onClick={handleClearFeed}
-            title="Vider le feed (test)"
-          >
-            🧹 Vider (test)
-          </button>
-        </div>
+        <div className="mb-2 text-sm font-bold">Activité</div>
         {feed.length === 0 ? (
           <div className="text-xs text-gray-400">Aucune activité.</div>
         ) : (
@@ -757,6 +762,7 @@ export default function ValisePage() {
               else if (ev.type === "complete") text = `a complété sa valise 🎉`;
               else if (ev.type === "exchange_proposed") text = `a proposé un échange`;
               else if (ev.type === "exchange_declined") text = `a refusé un échange`;
+              else if (ev.type === "recycle") text = `♻️ a recyclé 2 × ${LABEL_BY_KEY[ev.details?.item as ItemKey]}`;
               let dateStr = '';
               try {
                 const d = new Date(ev.created_at);

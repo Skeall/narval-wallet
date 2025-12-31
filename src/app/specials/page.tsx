@@ -51,6 +51,65 @@ export default function SpecialsPage() {
     setShowValiseIntro(false);
     try { router.replace('/valise'); } catch { window.location.href = '/valise'; }
   };
+  // debug: weather widget state (Sousse at 15:00)
+  type WeatherInfo = { temp: number; code: number; emoji: string; label: string; time: string };
+  const [valiseWeather, setValiseWeather] = useState<WeatherInfo | null>(null);
+
+  const mapWeather = (code: number) => {
+    if (code === 0) return { emoji: '☀️', label: 'Ensoleillé' };
+    if ([1,2,3].includes(code)) return { emoji: '⛅', label: 'Nuageux' };
+    if ([45,48].includes(code)) return { emoji: '🌫️', label: 'Brouillard' };
+    if ([51,53,55,56,57].includes(code)) return { emoji: '🌦️', label: 'Bruine' };
+    if ([61,63,65].includes(code)) return { emoji: '🌧️', label: 'Pluie' };
+    if ([66,67].includes(code)) return { emoji: '🌧️', label: 'Pluie gelée' };
+    if ([71,73,75,77].includes(code)) return { emoji: '🌨️', label: 'Neige' };
+    if ([80,81,82].includes(code)) return { emoji: '🌦️', label: 'Averses' };
+    if ([85,86].includes(code)) return { emoji: '🌨️', label: 'Averses de neige' };
+    if ([95,96,99].includes(code)) return { emoji: '⛈️', label: 'Orage' };
+    return { emoji: '🌤️', label: 'Variable' };
+  };
+
+  useEffect(() => {
+    const run = async () => {
+      try {
+        const today = new Date();
+        const dayStr = today.toISOString().slice(0,10);
+        const key = `valise_weather_${dayStr}`;
+        const cached = typeof window !== 'undefined' ? localStorage.getItem(key) : null;
+        if (cached) {
+          console.debug('[Specials][weather] cache hit');
+          setValiseWeather(JSON.parse(cached));
+          return;
+        }
+        const lat = 35.8256; // Sousse
+        const lon = 10.6411;
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,weather_code&timezone=auto`;
+        console.debug('[Specials][weather] fetch', url);
+        const res = await fetch(url, { cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const json = await res.json();
+        const times: string[] = json?.hourly?.time || [];
+        const temps: number[] = json?.hourly?.temperature_2m || [];
+        const codes: number[] = json?.hourly?.weather_code || [];
+        let idx = times.findIndex(t => t.startsWith(dayStr) && t.includes('T15:00'));
+        if (idx === -1) {
+          idx = times.findIndex(t => t.startsWith(dayStr) && t.includes('T14:00'));
+          if (idx === -1) idx = times.findIndex(t => t.startsWith(dayStr) && t.includes('T16:00'));
+          if (idx === -1) idx = times.findIndex(t => t.startsWith(dayStr));
+        }
+        if (idx >= 0) {
+          const code = Number(codes[idx] ?? 0);
+          const { emoji, label } = mapWeather(code);
+          const info: WeatherInfo = { temp: Number(temps[idx] ?? 0), code, emoji, label, time: (times[idx] || '').slice(11,16) };
+          setValiseWeather(info);
+          try { localStorage.setItem(key, JSON.stringify(info)); } catch {}
+        }
+      } catch (e) {
+        console.error('[Specials][weather] error', e);
+      }
+    };
+    run();
+  }, []);
   // Handler pour la Piñata : set sessionStorage et navigate
   const handleGoToPinata = (e?: React.MouseEvent) => {
     if (e) e.preventDefault();
@@ -115,6 +174,13 @@ export default function SpecialsPage() {
                   sizes="(max-width: 640px) 100vw, 800px"
                   priority={true}
                 />
+                {evt.slug === 'valise' && (
+                  <div className="absolute top-2 right-2 z-10 inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-black/45 backdrop-blur-sm border border-white/20 text-white">
+                    <span className="text-base" aria-hidden>{valiseWeather?.emoji || '🌤️'}</span>
+                    <span className="text-sm font-semibold">{valiseWeather ? `${Math.round(valiseWeather.temp)}°C` : '…'}</span>
+                    <span className="text-xs text-cyan-200/90">{valiseWeather?.label || 'Météo'}</span>
+                  </div>
+                )}
               </button>
             ) : (
               <div className="relative w-full" style={{ aspectRatio: '2/1' }}>
