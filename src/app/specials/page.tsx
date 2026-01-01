@@ -148,59 +148,11 @@ export default function SpecialsPage() {
         <span>🎯</span> Jeux & défis du moment
       </h1>
       <div className="w-full max-w-xl flex flex-col gap-7">
-        {SPECIALS.map(evt => (
-          <div key={evt.slug} className="bg-[#181F2E] rounded-2xl shadow-xl border border-[#232B42] overflow-hidden group transition-all duration-200">
-            {evt.link ? (
-              <button
-                type="button"
-                onClick={
-                  evt.slug === "pari-pinata"
-                    ? handleGoToPinata
-                    : evt.slug === "moracle-genie"
-                      ? () => router.push('/moracle')
-                      : evt.slug === "valise"
-                        ? handleGoToValise
-                        : undefined
-                }
-                className="block relative w-full focus:outline-none"
-                style={{ aspectRatio: '2/1' }}
-                tabIndex={0}
-              >
-                <Image
-                  src={evt.cover}
-                  alt={evt.title}
-                  fill
-                  className="object-cover group-hover:scale-[1.035] transition-transform duration-200 cursor-pointer"
-                  sizes="(max-width: 640px) 100vw, 800px"
-                  priority={true}
-                />
-                {evt.slug === 'valise' && (
-                  <div className="absolute top-2 right-2 z-10 inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-black/45 backdrop-blur-sm border border-white/20 text-white">
-                    <span className="text-base" aria-hidden>{valiseWeather?.emoji || '🌤️'}</span>
-                    <span className="text-sm font-semibold">{valiseWeather ? `${Math.round(valiseWeather.temp)}°C` : '…'}</span>
-                    <span className="text-xs text-cyan-200/90">{valiseWeather?.label || 'Météo'}</span>
-                  </div>
-                )}
-              </button>
-            ) : (
-              <div className="relative w-full" style={{ aspectRatio: '2/1' }}>
-                <Image
-                  src={evt.cover}
-                  alt={evt.title}
-                  fill
-                  className="object-cover opacity-80 grayscale"
-                  sizes="(max-width: 640px) 100vw, 800px"
-                  priority={true}
-                />
-              </div>
-            )}
-            <div className="p-4 flex flex-col gap-2">
-              <div className="flex items-center justify-between mb-1">
-                <h2 className="text-xl font-bold text-white drop-shadow-glow">{evt.title}</h2>
-                <span className="text-xs text-cyan-300 font-semibold whitespace-nowrap">{evt.until}</span>
-              </div>
-              <p className="text-gray-300 text-sm mb-2">{evt.description}</p>
-              {evt.link ? (
+        {SPECIALS.map(evt => {
+          const expired = (evt.slug === 'pari-pinata' || evt.slug === 'moracle-genie') && (new Date() >= new Date('2026-01-01'));
+          return (
+            <div key={evt.slug} className="bg-[#181F2E] rounded-2xl shadow-xl border border-[#232B42] overflow-hidden group transition-all duration-200">
+              {evt.link && !expired ? (
                 <button
                   type="button"
                   onClick={
@@ -212,14 +164,68 @@ export default function SpecialsPage() {
                           ? handleGoToValise
                           : undefined
                   }
-                  className="inline-block w-fit bg-amber-400 hover:bg-amber-300 text-black font-bold px-5 py-2 rounded-xl shadow-lg transition disabled:opacity-60 text-base"
+                  className="block relative w-full focus:outline-none"
+                  style={{ aspectRatio: '2/1' }}
+                  tabIndex={0}
                 >
-                  Découvrir
+                  <Image
+                    src={evt.cover}
+                    alt={evt.title}
+                    fill
+                    className="object-cover group-hover:scale-[1.035] transition-transform duration-200 cursor-pointer"
+                    sizes="(max-width: 640px) 100vw, 800px"
+                    priority={true}
+                  />
+                  {evt.slug === 'valise' && (
+                    <div className="absolute top-2 right-2 z-10 inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-black/45 backdrop-blur-sm border border-white/20 text-white">
+                      <span className="text-base" aria-hidden>{valiseWeather?.emoji || '🌤️'}</span>
+                      <span className="text-sm font-semibold">{valiseWeather ? `${Math.round(valiseWeather.temp)}°C` : '…'}</span>
+                      <span className="text-xs text-cyan-200/90">{valiseWeather?.label || 'Météo'}</span>
+                    </div>
+                  )}
                 </button>
-              ) : null}
+              ) : (
+                <div className="relative w-full" style={{ aspectRatio: '2/1' }}>
+                  <Image
+                    src={evt.cover}
+                    alt={evt.title}
+                    fill
+                    className="object-cover grayscale opacity-80"
+                    sizes="(max-width: 640px) 100vw, 800px"
+                    priority={true}
+                  />
+                  <div className="absolute top-2 left-2 z-10 px-2.5 py-1 rounded-full bg-black/60 border border-white/20 text-white text-xs font-semibold">
+                    Terminé
+                  </div>
+                </div>
+              )}
+              <div className="p-4 flex flex-col gap-2">
+                <div className="flex items-center justify-between mb-1">
+                  <h2 className="text-xl font-bold text-white drop-shadow-glow">{evt.title}</h2>
+                  <span className="text-xs text-cyan-300 font-semibold whitespace-nowrap">{expired ? 'Revient bientôt' : evt.until}</span>
+                </div>
+                <p className="text-gray-300 text-sm mb-2">{evt.description}</p>
+                {evt.link && !expired ? (
+                  <button
+                    type="button"
+                    onClick={
+                      evt.slug === "pari-pinata"
+                        ? handleGoToPinata
+                        : evt.slug === "moracle-genie"
+                          ? () => router.push('/moracle')
+                          : evt.slug === "valise"
+                            ? handleGoToValise
+                            : undefined
+                    }
+                    className="inline-block w-fit bg-amber-400 hover:bg-amber-300 text-black font-bold px-5 py-2 rounded-xl shadow-lg transition disabled:opacity-60 text-base"
+                  >
+                    Découvrir
+                  </button>
+                ) : null}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         {/* Valise intro overlay (toujours monté pour conserver le contexte de lecture) */}
         <div
           className={showValiseIntro ? "fixed inset-0 z-[9999] bg-black/95 flex items-center justify-center" : "fixed inset-0 z-[9999] bg-black/95 items-center justify-center hidden"}

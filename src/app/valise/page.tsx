@@ -68,6 +68,8 @@ export default function ValisePage() {
   // intro video state
   const [showIntro, setShowIntro] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  // audio: suspense sound for daily draw
+  const drawSoundRef = useRef<HTMLAudioElement | null>(null);
   // debug: set of item keys (useful or useless) that appear at least twice (to show recycle)
   const duplicateKeys = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -79,10 +81,28 @@ export default function ValisePage() {
     return dups;
   }, [items]);
 
+  // suspense animation for daily draw
+  const [showDrawSuspense, setShowDrawSuspense] = useState(false);
+  const [suspenseIndex, setSuspenseIndex] = useState(0);
+  const cycleKeys = useMemo(() => ALL_ITEMS.map(i => i.key as ItemKey), []);
+
   // debug: tick clock for UI
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000 * 30);
     return () => clearInterval(t);
+  }, []);
+
+  // Preload draw sound once on mount
+  useEffect(() => {
+    try {
+      if (typeof window === 'undefined') return;
+      const a = new Audio('/valiseopen.mp3');
+      a.preload = 'auto';
+      drawSoundRef.current = a;
+      console.debug('[Valise][sound] preload valiseopen.mp3');
+    } catch (e) {
+      console.debug('[Valise][sound] preload failed', e);
+    }
   }, []);
 
   // Show intro video if coming from /specials
@@ -189,6 +209,21 @@ export default function ValisePage() {
       if (!user) return;
       if (isOver) { setMessage("Jeu terminé"); return; }
       if (hasDrawnToday) { setMessage("Tirage déjà fait aujourd’hui"); return; }
+      // start suspense overlay (1s min)
+      const start = Date.now();
+      setShowDrawSuspense(true);
+      const animInterval = setInterval(() => setSuspenseIndex(i => (i + 1) % cycleKeys.length), 90);
+      let revealMsg = "";
+      // play suspense sound
+      try {
+        const a = drawSoundRef.current || new Audio('/valiseopen.mp3');
+        drawSoundRef.current = a;
+        a.currentTime = 0;
+        a.volume = 1;
+        a.play().then(() => console.debug('[Valise][sound] play valiseopen')).catch(() => {});
+      } catch (e) {
+        console.debug('[Valise][sound] play failed', e);
+      }
       // random item (all equal probability)
       const rand = ALL_ITEMS[Math.floor(Math.random() * ALL_ITEMS.length)].key as ItemKey;
       // upsert state last_draw_date
@@ -241,13 +276,28 @@ export default function ValisePage() {
       if (checkVictory(after) && !state?.completed_at) {
         await awardVictory();
       } else {
-        setMessage(`Tirage: ${LABEL_BY_KEY[rand]}`);
+        revealMsg = `Tirage: ${LABEL_BY_KEY[rand]}`;
       }
       // debug: delay reload to avoid overriding local state with stale remote read
       setTimeout(() => { reloadAll().catch(() => {}); }, 250);
+      // wait until the suspense sound finishes to reveal
+      await new Promise<void>((resolve) => {
+        try {
+          const a = drawSoundRef.current;
+          if (!a) { resolve(); return; }
+          if (a.ended) { resolve(); return; }
+          const onEnded = () => { try { a.removeEventListener('ended', onEnded); } catch {} resolve(); };
+          a.addEventListener('ended', onEnded);
+        } catch { resolve(); }
+      });
+      try { clearInterval(animInterval); } catch {}
+      setShowDrawSuspense(false);
+      if (revealMsg) setMessage(revealMsg);
     } catch (e: any) {
       console.error("[Valise] draw error", e);
       setMessage("Erreur tirage : " + (e?.message || e));
+      setShowDrawSuspense(false);
+      try { drawSoundRef.current?.pause(); } catch {}
     }
   };
 
@@ -339,6 +389,9 @@ export default function ValisePage() {
   const [userMap, setUserMap] = useState<Record<string, { pseudo: string; avatar?: string }>>({});
   // rules popup
   const [showRules, setShowRules] = useState(false);
+  // confirmations
+  const [confirmDeleteTarget, setConfirmDeleteTarget] = useState<{ id: string; item: ItemKey } | null>(null);
+  const [confirmRecycleKey, setConfirmRecycleKey] = useState<ItemKey | null>(null);
 
   const loadPending = async () => {
     if (!user) return;
@@ -499,6 +552,76 @@ export default function ValisePage() {
           />
         </div>
       )}
+
+      {/* Draw suspense overlay (1s min) */}
+      {showDrawSuspense && (
+        <div className="fixed inset-0 z-[58] bg-black/70 flex items-center justify-center">
+          <div className="bg-[#0F172A] border border-white/10 rounded-2xl p-5 w-[88%] max-w-[380px] flex flex-col items-center shadow-2xl">
+            <div className="text-sm text-white/80 mb-3">Tirage en cours…</div>
+            <div className="w-32 h-32 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center shadow-inner">
+              <img
+                src={IMG_BY_KEY[cycleKeys[suspenseIndex]]}
+                alt={LABEL_BY_KEY[cycleKeys[suspenseIndex]]}
+                className="w-24 h-24 object-contain animate-pulse"
+                draggable={false}
+              />
+            </div>
+            <div className="mt-3 text-xs text-white/60">Suspense…</div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm delete modal */}
+      {confirmDeleteTarget && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setConfirmDeleteTarget(null)}>
+          <div className="bg-[#0F172A] border border-white/10 rounded-2xl p-4 w-[92%] max-w-[420px]" onClick={e => e.stopPropagation()}>
+            <div className="text-base font-bold mb-1">Confirmer la suppression</div>
+            <div className="text-sm text-white/80 mb-4">
+              Veux-tu vraiment supprimer "{LABEL_BY_KEY[confirmDeleteTarget.item]}" pour 1 Narval ?
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                className="px-3 py-2 rounded-lg bg-gray-600 hover:bg-gray-500 text-white"
+                onClick={() => setConfirmDeleteTarget(null)}
+              >Annuler</button>
+              <button
+                className="px-3 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white font-semibold"
+                onClick={async () => {
+                  console.debug('[Valise][confirm] delete', confirmDeleteTarget);
+                  const t = confirmDeleteTarget; setConfirmDeleteTarget(null);
+                  await handleDelete(t.id, t.item);
+                }}
+              >Supprimer (−1)</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm recycle modal */}
+      {confirmRecycleKey && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setConfirmRecycleKey(null)}>
+          <div className="bg-[#0F172A] border border-white/10 rounded-2xl p-4 w-[92%] max-w-[420px]" onClick={e => e.stopPropagation()}>
+            <div className="text-base font-bold mb-1">Confirmer le recyclage</div>
+            <div className="text-sm text-white/80 mb-4">
+              Veux-tu vraiment recycler 2 × "{LABEL_BY_KEY[confirmRecycleKey]}" pour récupérer un tirage du jour ?
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                className="px-3 py-2 rounded-lg bg-gray-600 hover:bg-gray-500 text-white"
+                onClick={() => setConfirmRecycleKey(null)}
+              >Annuler</button>
+              <button
+                className="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold"
+                onClick={async () => {
+                  console.debug('[Valise][confirm] recycle', confirmRecycleKey);
+                  const k = confirmRecycleKey as ItemKey; setConfirmRecycleKey(null);
+                  await handleRecycle(k);
+                }}
+              >Recycler ♻️</button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Header (trimmed) */}
       <div className="w-full max-w-[430px] flex flex-col gap-2 items-center">
         {isOver && <div className="text-red-300 font-semibold">Jeu terminé</div>}
@@ -569,7 +692,7 @@ export default function ValisePage() {
                     {!victory && duplicateKeys.has(it.item) && (
                       <button
                         className="absolute top-1.5 left-1.5 w-7 h-7 rounded-full bg-emerald-600/80 hover:bg-emerald-500 text-white flex items-center justify-center shadow"
-                        onClick={() => handleRecycle(it.item)}
+                        onClick={() => { console.debug('[Valise][ui] open recycle confirm for', it.item); setConfirmRecycleKey(it.item); }}
                         aria-label={`Recyclage 2 × ${LABEL_BY_KEY[it.item]}`}
                         title="Recyclage (2×)"
                       >
@@ -580,7 +703,7 @@ export default function ValisePage() {
                     {!victory && (
                       <button
                         className="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-black/50 hover:bg-red-600 text-white flex items-center justify-center shadow"
-                        onClick={() => handleDelete(it.id, it.item)}
+                        onClick={() => { console.debug('[Valise][ui] open delete confirm for', it.id, it.item); setConfirmDeleteTarget({ id: it.id, item: it.item }); }}
                         aria-label={`Supprimer ${LABEL_BY_KEY[it.item]} (-1)`}
                         title="Supprimer (-1)"
                       >

@@ -20,6 +20,7 @@ export const metadata: Metadata = {
 
 import BottomNavBar from "./components/BottomNavBar";
 import NoZoom from "./components/NoZoom";
+import PageTransition from "./components/PageTransition";
 
 export default function RootLayout({
   children,
@@ -50,7 +51,9 @@ export default function RootLayout({
       >
         {/* debug: enforce no-zoom listeners */}
         <NoZoom />
-        {children}
+        <PageTransition>
+          {children}
+        </PageTransition>
         <BottomNavBar />
       </body>
     </html>
