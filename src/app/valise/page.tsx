@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
+import LoadingVideo from "../components/LoadingVideo";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabaseClient";
 
@@ -68,6 +69,9 @@ export default function ValisePage() {
   // intro video state
   const [showIntro, setShowIntro] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  // streak state (consecutive days with a daily draw)
+  const [streak, setStreak] = useState<number>(0);
+  const [streakLoading, setStreakLoading] = useState<boolean>(false);
   // audio: suspense sound for daily draw
   const drawSoundRef = useRef<HTMLAudioElement | null>(null);
   // debug: set of item keys (useful or useless) that appear at least twice (to show recycle)
@@ -154,6 +158,47 @@ export default function ValisePage() {
   };
 
   useEffect(() => { if (user?.uid) reloadAll(user.uid); }, [user?.uid]);
+
+  // compute daily streak: consecutive days with a draw for this user
+  useEffect(() => {
+    const loadStreak = async () => {
+      try {
+        if (!user) return;
+        setStreakLoading(true);
+        const since = new Date();
+        since.setDate(since.getDate() - 120);
+        const { data: draws } = await supabase
+          .from('valise_events')
+          .select('created_at')
+          .eq('uid', user.uid)
+          .eq('type', 'draw')
+          .gte('created_at', since.toISOString())
+          .order('created_at', { ascending: false });
+        const setDays = new Set<string>();
+        (draws || []).forEach((r: any) => {
+          try { setDays.add(new Date(r.created_at).toISOString().slice(0,10)); } catch {}
+        });
+        // walk back from today (or yesterday if no draw today)
+        const today = new Date();
+        const start = (!!state?.last_draw_date && state.last_draw_date.slice(0,10) === today.toISOString().slice(0,10))
+          ? new Date(today)
+          : new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
+        let d = start;
+        let count = 0;
+        while (true) {
+          const key = d.toISOString().slice(0,10);
+          if (setDays.has(key)) { count += 1; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1); }
+          else break;
+        }
+        setStreak(count);
+      } catch (e) {
+        console.debug('[Valise][streak] error', e);
+      } finally {
+        setStreakLoading(false);
+      }
+    };
+    loadStreak();
+  }, [user?.uid, state?.last_draw_date]);
 
   const todayStr = () => new Date().toISOString().slice(0, 10);
   const hasDrawnToday = !!state?.last_draw_date && state!.last_draw_date.slice(0, 10) === todayStr();
@@ -523,9 +568,8 @@ export default function ValisePage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0B0F1C] text-white">Chargement…</div>
-    );
+    // debug: show animated video instead of text during load
+    return <LoadingVideo label="Chargement de la valise" />;
   }
 
   const victory = !!state?.completed_at;
@@ -627,6 +671,16 @@ export default function ValisePage() {
         {isOver && <div className="text-red-300 font-semibold">Jeu terminé</div>}
         {victory && <div className="mt-1 px-3 py-1 rounded bg-green-600 text-white font-bold">Votre valise est complète 🎉</div>}
         {message && <div className="mt-1 text-cyan-300 text-sm">{message}</div>}
+      </div>
+      {/* Streak pill */}
+      <div className="w-full max-w-[430px] flex items-center justify-center">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/30 border border-white/10 shadow">
+          <span className="text-base">🔥</span>
+          <span className="text-sm font-bold text-amber-300">Streak: {streakLoading ? '…' : streak}</span>
+        </div>
+        <div className="ml-2 text-xs text-gray-300">
+          {hasDrawnToday ? 'Série en cours' : `Fais un tirage aujourd’hui pour passer à ${Math.max(0, streak) + 1}`}
+        </div>
       </div>
 
       {/* Rules modal */}

@@ -11,6 +11,7 @@ import EnchereDuMoisHomeSection from "./EnchereDuMoisHomeSection";
 import ToastNotification from "./ToastNotification";
 import NewsModal, { NewsItem } from "./components/NewsModal";
 import WalletHistoryEmbed from "./components/WalletHistoryEmbed";
+import LoadingVideo from "./components/LoadingVideo";
 
 interface UserData {
   uid: string;
@@ -140,11 +141,7 @@ export default function Home() {
   }, [router]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0B0F1C] text-white">
-        Chargement…
-      </div>
-    );
+    return <LoadingVideo label="Chargement de l’accueil" />;
   }
 
   return (
