@@ -10,6 +10,7 @@ import { PariSoundProvider } from "./PariSoundProvider";
 import EnchereDuMoisHomeSection from "./EnchereDuMoisHomeSection";
 import ToastNotification from "./ToastNotification";
 import NewsModal, { NewsItem } from "./components/NewsModal";
+import WalletHistoryEmbed from "./components/WalletHistoryEmbed";
 
 interface UserData {
   uid: string;
@@ -202,18 +203,6 @@ export default function Home() {
                 {/* debug: replaced SVG by PNG icon from /public/icons */}
                 <img src="/icons/megaphone.png" alt="Nouveautés" className="w-6 h-6 object-contain" />
               </button>
-              <div className="relative flex-shrink-0">
-                <button
-                  aria-label="Voir le portefeuille"
-                  className="p-2 rounded-full hover:bg-[#232B42] transition"
-                  onClick={() => { console.debug('[Home] Go to /wallet'); router.push('/wallet'); }}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6 text-sky-300">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-
-                </button>
-              </div>
             </div>
           </div>
           {/* Solde */}
@@ -247,33 +236,44 @@ export default function Home() {
           {user && (
             <ParisEnCoursHomeSection userId={user.uid} userPseudo={user.pseudo} />
           )}
-        {/* Modal d'avatar agrandi */}
+        {/* Bottom sheet profil + historique (inspiré du screenshot) */}
         {showAvatarModal && user && (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-            onClick={() => setShowAvatarModal(false)}
+            className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-md"
+            onClick={() => { console.debug('[Home][ProfileSheet] overlay click -> close'); setShowAvatarModal(false); }}
             aria-modal="true"
             role="dialog"
           >
             <div
-              className="relative flex flex-col items-center"
+              className="absolute inset-x-0 bottom-0 w-full bg-[#0F172A] border border-white/10 rounded-t-3xl shadow-2xl h-[85vh]"
               onClick={e => e.stopPropagation()}
             >
-              <button
-                className="absolute -top-4 -right-4 bg-white/80 hover:bg-white text-black rounded-full p-1 shadow-lg"
-                onClick={() => setShowAvatarModal(false)}
-                aria-label="Fermer"
-                tabIndex={0}
-              >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M6 18L18 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
-              </button>
-              <img
-                src={user.avatar || "/avatar-paysage.jpg"}
-                alt={user.pseudo}
-                className="w-48 h-48 md:w-64 md:h-64 rounded-full object-cover border-4 border-white shadow-2xl"
-                style={{ background: 'transparent' }}
-              />
-              <span className="mt-4 text-white text-lg font-bold drop-shadow-lg">{user.pseudo}</span>
+              {/* handle + close */}
+              <div className="relative pt-3 pb-2">
+                <div className="mx-auto h-1.5 w-12 rounded-full bg-white/20" />
+                <button
+                  className="absolute top-2 right-2 bg-white/10 hover:bg-white/20 text-white rounded-full p-1.5 border border-white/20"
+                  onClick={() => { console.debug('[Home][ProfileSheet] close click'); setShowAvatarModal(false); }}
+                  aria-label="Fermer"
+                >
+                  ✖
+                </button>
+              </div>
+              {/* header avatar + pseudo */}
+              <div className="px-5 -mt-10 flex flex-col items-center">
+                <div className="w-28 h-28 rounded-full border-4 border-white shadow-lg overflow-hidden bg-[#0B0F1C]">
+                  <img src={user.avatar || "/avatar-paysage.jpg"} alt={user.pseudo} className="w-full h-full object-cover" />
+                </div>
+                <div className="mt-3 text-2xl font-extrabold tracking-wide uppercase bg-white text-black px-3 py-1 rounded">
+                  {user.pseudo}
+                </div>
+                <div className="mt-3 text-lg font-bold text-white">Historique du portefeuille</div>
+                <div className="text-sm text-gray-300 mb-2">Tes bonus récents, classés par jour.</div>
+              </div>
+              {/* content scroll area (fits within sheet height) */}
+              <div className="px-5 pb-6 h-[calc(85vh-170px)] overflow-y-auto">
+                <WalletHistoryEmbed />
+              </div>
             </div>
           </div>
         )}
