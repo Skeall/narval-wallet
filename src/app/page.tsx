@@ -176,30 +176,26 @@ export default function Home() {
             {/* Header */}
           <div className="flex items-start justify-between w-full px-1 pt-0 pb-0 gap-2 -mt-3">
             <div className="flex items-center gap-2 flex-shrink-0">
-              <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-sky-400 to-blue-800 flex items-center justify-center overflow-hidden border-2 border-[#232B42]">
-                <img
-                  src={user?.avatar || "/avatar-paysage.jpg"}
-                  alt="Avatar"
-                  className="object-cover w-full h-full cursor-pointer hover:scale-110 transition-transform"
-                  onClick={() => setShowAvatarModal(true)}
-                />
-              </div>
-              <div className="flex flex-col justify-center">
-                <span className="text-base font-medium text-gray-300 leading-tight whitespace-nowrap">Salut <span role="img" aria-label="wave">👋</span> <span className="text-white font-semibold">{user?.pseudo}</span></span>
-              </div>
-            </div>
-            {/* Groupe méga + notification côte à côte */}
-            <div className="flex items-center gap-0">
-              {/* debug: replaced Piñata icon with megaphone to open News manually */}
+              {/* debug: News button moved to left spot (was avatar) */}
               <button
-                onClick={() => setNewsOpen(true)}
+                onClick={() => { console.debug('[Home][Header] open News from left button'); setNewsOpen(true); }}
                 className="p-2 rounded-full hover:bg-[#232B42] transition"
                 aria-label="Voir les nouveautés"
                 title="Nouveautés"
               >
-                {/* debug: replaced SVG by PNG icon from /public/icons */}
                 <img src="/icons/megaphone.png" alt="Nouveautés" className="w-6 h-6 object-contain" />
               </button>
+            </div>
+            {/* Groupe droite: avatar seul */}
+            <div className="flex items-center gap-2">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-sky-400 to-blue-800 flex items-center justify-center overflow-hidden border-2 border-[#232B42]">
+                <img
+                  src={user?.avatar || "/avatar-paysage.jpg"}
+                  alt="Avatar"
+                  className="object-cover w-full h-full cursor-pointer hover:scale-110 transition-transform"
+                  onClick={() => { console.debug('[Home][Header] open profile sheet from right avatar'); setShowAvatarModal(true); }}
+                />
+              </div>
             </div>
           </div>
           {/* Solde */}
