@@ -173,8 +173,8 @@ export default function Home() {
         <div className="w-full flex flex-col items-center justify-center min-h-screen">
           <div className="w-full max-w-[430px] mx-auto flex flex-col gap-6 pt-8">
 
-            {/* Header */}
-          <div className="flex items-start justify-between w-full px-1 pt-0 pb-0 gap-2 -mt-3">
+            {/* sticky header: news left, avatar right */}
+          <div className="sticky top-0 z-30 flex items-center justify-between w-full px-3 pt-2 pb-2 gap-2 -mt-3 bg-[#0B0F1C]/90 backdrop-blur-md">
             <div className="flex items-center gap-2 flex-shrink-0">
               {/* debug: News button moved to left spot (was avatar) */}
               <button
