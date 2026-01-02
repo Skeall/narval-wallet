@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { usePariSound, PariSoundProvider } from "../PariSoundProvider";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabaseClient";
+import { grantXp } from "../xp/xpService";
+import { XP_VALUES } from "../xp/xpRules";
 
 interface User {
   uid: string;
@@ -283,18 +285,22 @@ function PariPage() {
                   date: new Date().toISOString(),
                 },
               ]);
-              // 4. Créer l'entrée dans la table "paris"
-              const { error: pariError } = await supabase.from("paris").insert([
-                {
-                  joueur1_uid: currentUser.uid,
-                  joueur2_uid: selectedOpponent,
-                  montant,
-                  statut: "en attente de validation",
-                  gagnant_uid: null,
-                  date: new Date().toISOString(),
-                  ...(description ? { description: description.trim() } : {}),
-                },
-              ]);
+              // 4. Créer l'entrée dans la table "paris" (on récupère l'id pour la dédup XP)
+              const { data: pariRows, error: pariError } = await supabase
+                .from("paris")
+                .insert([
+                  {
+                    joueur1_uid: currentUser.uid,
+                    joueur2_uid: selectedOpponent,
+                    montant,
+                    statut: "en attente de validation",
+                    gagnant_uid: null,
+                    date: new Date().toISOString(),
+                    ...(description ? { description: description.trim() } : {}),
+                  },
+                ])
+                .select("id")
+                .limit(1);
               // Rollback si erreur transaction ou pari (remet le solde si erreur)
               if (txError || pariError) {
                 // Rembourse le solde si une des deux opérations a échoué
@@ -308,6 +314,15 @@ function PariPage() {
                 setMontant(0);
                 setSelectedOpponent("");
                 setDescription("");
+                // XP: création de pari (+5) – idempotent via dedupe
+                try {
+                  const betId = (pariRows && pariRows[0] && pariRows[0].id) || null;
+                  const dedupe = betId ? `BETC:${betId}` : `BETC:${currentUser.uid}:${selectedOpponent}:${montant}:${new Date().toISOString().slice(0,10)}`;
+                  console.debug('[XP][Pari][Create] grant +', XP_VALUES.BET_CREATED, { betId, dedupe });
+                  await grantXp(currentUser.uid, 'BET_CREATED', XP_VALUES.BET_CREATED, { betId, montant, opponent: selectedOpponent }, dedupe);
+                } catch (e) {
+                  console.debug('[XP][Pari][Create] error', e);
+                }
               }
               setLoading(false);
             }}

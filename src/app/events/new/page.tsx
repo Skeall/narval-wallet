@@ -2,6 +2,8 @@
 import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/utils/supabaseClient";
 import { useRouter } from "next/navigation";
+import { grantXp } from "../../xp/xpService";
+import { XP_VALUES } from "../../xp/xpRules";
 
 const DEFAULT_COVER = "/default-event-cover.jpg"; // À placer dans /public (1920x1080 conseillé)
 
@@ -68,23 +70,36 @@ export default function NewEventPage() {
     }
     // 2. Format date
     const eventDate = new Date(`${date}T${time}`);
-    // 3. Insert en base
-    const { error: insErr } = await supabase.from('events').insert({
-      title: title.trim(),
-      location: location.trim(),
-      // Stocke la date/heure locale France (Europe/Paris)
-    date: `${date}T${time}:00+02:00`,
-      description: description.trim() || null,
-      cover_url,
-      creator_uid: currentUserUid,
-      participants: [currentUserUid],
-      narval_status: { creator_claimed: false, participants_claimed: [] },
-      created_at: new Date().toISOString()
-    });
+    // 3. Insert en base (récupère l'id pour la dédup XP)
+    const { data: evRows, error: insErr } = await supabase
+      .from('events')
+      .insert({
+        title: title.trim(),
+        location: location.trim(),
+        // Stocke la date/heure locale France (Europe/Paris)
+        date: `${date}T${time}:00+02:00`,
+        description: description.trim() || null,
+        cover_url,
+        creator_uid: currentUserUid,
+        participants: [currentUserUid],
+        narval_status: { creator_claimed: false, participants_claimed: [] },
+        created_at: new Date().toISOString()
+      })
+      .select('id')
+      .limit(1);
     if (insErr) {
       setError("Erreur lors de la création de l'événement : " + insErr.message);
       setLoading(false);
       return;
+    }
+    // 4. XP: Création d'événement (+15) – idempotent via dedupe
+    try {
+      const eventId = (evRows && evRows[0] && evRows[0].id) || null;
+      const dedupe = eventId ? `PARTY_CREATE:${eventId}` : `PARTY_CREATE:${currentUserUid}:${title}:${date}`;
+      console.debug('[XP][Events][Create] grant +', XP_VALUES.PARTY_CREATED, { eventId, dedupe });
+      await grantXp(currentUserUid, 'PARTY_CREATED', XP_VALUES.PARTY_CREATED, { eventId, title }, dedupe);
+    } catch (e) {
+      console.debug('[XP][Events][Create] error', e);
     }
     setLoading(false);
     router.push("/events");

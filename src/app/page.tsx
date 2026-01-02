@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { supabase } from "@/utils/supabaseClient";
@@ -12,6 +12,9 @@ import ToastNotification from "./ToastNotification";
 import NewsModal, { NewsItem } from "./components/NewsModal";
 import WalletHistoryEmbed from "./components/WalletHistoryEmbed";
 import LoadingVideo from "./components/LoadingVideo";
+import XPRingAvatar from "./components/XPRingAvatar";
+import { applyDailyPassiveXp, applyLoginXp, getUserXpState, grantXp } from "./xp/xpService";
+import { getPendingRewardsCount, claimNextReward } from "./xp/rewardService";
 
 interface UserData {
   uid: string;
@@ -27,6 +30,14 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [showTransferToast, setShowTransferToast] = useState(false);
   const [transferToastMsg, setTransferToastMsg] = useState("");
+  const [xpProgress, setXpProgress] = useState<number>(0); // 0..100
+  const [pendingRewards, setPendingRewards] = useState<number>(0);
+  // debug: gift opening overlay state
+  const [showGiftOverlay, setShowGiftOverlay] = useState(false);
+  const [giftRevealAmount, setGiftRevealAmount] = useState<number | null>(null);
+  const [giftCycle, setGiftCycle] = useState(0);
+  const giftEmojis = ["🎁", "💫", "✨", "🪙", "🎉"];
+  const giftAudioRef = useRef<HTMLAudioElement | null>(null);
   // debug: news modal state
   const [newsOpen, setNewsOpen] = useState(false);
   const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
@@ -135,6 +146,20 @@ export default function Home() {
         return;
       }
       setUser(data);
+      try {
+        // debug: initialize XP state and apply daily/login XP idempotently
+        await applyDailyPassiveXp(data.uid);
+        await applyLoginXp(data.uid);
+        const st = await getUserXpState(data.uid);
+        const mod = ((st?.xp || 0) % 100);
+        setXpProgress(mod);
+        console.debug('[Home][XP] progress % =', mod);
+        const cnt = await getPendingRewardsCount(data.uid);
+        setPendingRewards(cnt);
+        console.debug('[Home][XP] pending rewards =', cnt);
+      } catch (e) {
+        console.debug('[Home][XP] init error', e);
+      }
       setLoading(false);
     };
     fetchUser();
@@ -149,6 +174,8 @@ export default function Home() {
       <LooseSoundProvider>
         <VictorySoundProvider>
         <div className="min-h-screen flex flex-col items-center justify-center bg-[#0B0F1C] text-white relative">
+        {/* preload gift audio persistently to ensure ref is ready at click time */}
+        <audio ref={giftAudioRef} src="/gift.mp3" preload="auto" className="hidden" />
 
         {/* News modal */}
         <NewsModal
@@ -186,13 +213,24 @@ export default function Home() {
                 <img src="/icons/megaphone.png" alt="Nouveautés" className="w-6 h-6 object-contain" />
               </button>
             </div>
-            {/* Groupe droite: avatar seul */}
+            {/* Groupe droite: avatar + badge cadeau si récompense en attente */}
             <div className="flex items-center gap-2">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-sky-400 to-blue-800 flex items-center justify-center overflow-hidden border-2 border-[#232B42]">
-                <img
+              <div className="relative">
+                {pendingRewards > 0 && (
+                  <button
+                    className="absolute -top-3 left-1/2 -translate-x-1/2 z-10 text-2xl drop-shadow-lg animate-bounce"
+                    onClick={() => { console.debug('[Home][Header] gift badge click -> open profile sheet'); setShowAvatarModal(true); }}
+                    aria-label="Cadeau XP à ouvrir"
+                    title="Cadeau XP à ouvrir"
+                  >
+                    🎁
+                  </button>
+                )}
+                <XPRingAvatar
+                  size={52}
                   src={user?.avatar || "/avatar-paysage.jpg"}
-                  alt="Avatar"
-                  className="object-cover w-full h-full cursor-pointer hover:scale-110 transition-transform"
+                  progress={xpProgress}
+                  ringColor="#FF6FA9"
                   onClick={() => { console.debug('[Home][Header] open profile sheet from right avatar'); setShowAvatarModal(true); }}
                 />
               </div>
@@ -252,21 +290,95 @@ export default function Home() {
                   ✖
                 </button>
               </div>
-              {/* header avatar + pseudo */}
+              {/* header avatar + pseudo (with XP ring) */}
               <div className="px-5 -mt-10 flex flex-col items-center">
-                <div className="w-28 h-28 rounded-full border-4 border-white shadow-lg overflow-hidden bg-[#0B0F1C]">
-                  <img src={user.avatar || "/avatar-paysage.jpg"} alt={user.pseudo} className="w-full h-full object-cover" />
+                {/* debug: Use same visual size (w-28 -> 112px) for the ringed avatar */}
+                <div className="shadow-lg">
+                  <XPRingAvatar
+                    size={112}
+                    src={user.avatar || "/avatar-paysage.jpg"}
+                    progress={xpProgress}
+                    ringColor="#FF6FA9"
+                  />
                 </div>
+                {/* XP label above pseudo, discreet */}
+                <div className="mt-2 text-xs text-gray-300">({Math.round(xpProgress)}/100)</div>
                 <div className="mt-3 text-2xl font-extrabold tracking-wide uppercase bg-white text-black px-3 py-1 rounded">
                   {user.pseudo}
                 </div>
                 <div className="mt-3 text-lg font-bold text-white">Historique du portefeuille</div>
                 <div className="text-sm text-gray-300 mb-2">Tes bonus récents, classés par jour.</div>
+                {pendingRewards > 0 && (
+                  <button
+                    className="mt-1 px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-bold text-sm"
+                    onClick={async () => {
+                      if (!user) return;
+                      try {
+                        console.debug('[Home][XP][Gift] open clicked -> show overlay suspense');
+                        setGiftRevealAmount(null);
+                        setShowGiftOverlay(true);
+                        // try play audio now that ref is persistent
+                        try {
+                          const a = giftAudioRef.current;
+                          if (a) {
+                            a.pause(); a.currentTime = 0; a.volume = 0.85;
+                            await a.play().catch(async (err) => {
+                              console.debug('[Home][XP][Gift] gift.mp3 play failed, fallback to valiseopen.mp3', err);
+                              try { a.src = '/valiseopen.mp3'; a.load(); a.currentTime = 0; await a.play(); } catch (e2) { console.debug('[Home][XP][Gift] fallback play failed', e2); }
+                            });
+                          }
+                        } catch (e) { console.debug('[Home][XP][Gift] audio play exception', e); }
+                        // start emoji cycling for hype
+                        let i = 0;
+                        const cycleId = setInterval(() => {
+                          i = (i + 1) % giftEmojis.length;
+                          setGiftCycle(i);
+                        }, 150);
+                        // suspense duration ~1.2s before reveal
+                        await new Promise(r => setTimeout(r, 1200));
+                        const res = await claimNextReward(user.uid);
+                        clearInterval(cycleId);
+                        if (res && typeof res.amount === 'number') {
+                          console.debug('[Home][XP][Gift] reveal amount =', res.amount);
+                          setGiftRevealAmount(res.amount);
+                          setTransferToastMsg(`🎁 Cadeau XP: +${res.amount} Narval${res.amount>1?'s':''}`);
+                          setShowTransferToast(true);
+                          const cnt = await getPendingRewardsCount(user.uid);
+                          setPendingRewards(cnt);
+                        } else {
+                          console.debug('[Home][XP][Gift] claim returned null');
+                          setGiftRevealAmount(0);
+                        }
+                        // keep reveal visible a bit
+                        await new Promise(r => setTimeout(r, 1100));
+                        try { const a = giftAudioRef.current; if (a) { a.pause(); } } catch {}
+                        setShowGiftOverlay(false);
+                      } catch (e) {
+                        console.debug('[Home][XP] claim error', e);
+                        try { const a = giftAudioRef.current; if (a) { a.pause(); } } catch {}
+                        setShowGiftOverlay(false);
+                      }
+                    }}
+                  >
+                    Ouvrir un cadeau
+                  </button>
+                )}
               </div>
               {/* content scroll area (fits within sheet height) */}
               <div className="px-5 pb-6 h-[calc(85vh-170px)] overflow-y-auto">
                 <WalletHistoryEmbed />
               </div>
+              {/* Gift suspense overlay (relative to sheet) */}
+              {showGiftOverlay && (
+                <div className="absolute inset-0 z-[80] bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center">
+                  <div className="text-6xl select-none animate-bounce">{giftEmojis[giftCycle]}</div>
+                  {giftRevealAmount === null ? (
+                    <div className="mt-3 text-gray-200 text-sm">Suspens…</div>
+                  ) : (
+                    <div className="mt-4 text-3xl font-extrabold text-amber-300 drop-shadow-lg">+{giftRevealAmount} Narval{giftRevealAmount>1?'s':''} !</div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -2,6 +2,8 @@ import { useEffect, useState, useRef } from "react";
 import { useVictorySound } from "./VictorySoundProvider";
 import { useLooseSound } from "./LooseSoundProvider";
 import { supabase } from "@/utils/supabaseClient";
+import { grantXp } from "./xp/xpService";
+import { XP_VALUES } from "./xp/xpRules";
 import BetAcceptCard from "./components/BetAcceptCard";
 
 interface ParisEnCoursHomeSectionProps {
@@ -40,6 +42,25 @@ export default function ParisEnCoursHomeSection({ userId, userPseudo, refresh }:
       setActionMsg("Erreur lors du versement des gains : " + gagnantUpdateError.message);
       return;
     }
+    // 3b. Journaliser la transaction créditrice pour visibilité portefeuille
+    try {
+      const description = `Gain pari #${pari.id} : ${pari.description || ''}`.trim();
+      const { error: txErr } = await supabase.from('transactions').insert([
+        {
+          type: 'pari',
+          from: null,
+          to: gagnantUid,
+          montant: gainNet,
+          description,
+          date: new Date().toISOString(),
+        }
+      ]);
+      if (txErr) {
+        console.debug('[Pari][HomeSetWinner] transaction insert error', txErr);
+      }
+    } catch (e) {
+      console.debug('[Pari][HomeSetWinner] transaction insert exception', e);
+    }
     // 4. Plus de crédit pot commun
     // 5. Mettre à jour le pari
     await supabase
@@ -73,6 +94,14 @@ export default function ParisEnCoursHomeSection({ userId, userPseudo, refresh }:
         console.error('[MORACLE][INSERT] Exception', err);
         setActionMsg('Erreur création voeu Moracle (exception JS)');
       }
+    }
+    // 6. XP: règlement de pari (+10) pour l'acteur qui déclenche l'action (userId)
+    try {
+      const dedupe = `BETS:${pari.id}:${userId}`;
+      console.debug('[XP][Pari][Settle][Home] grant +', XP_VALUES.BET_SETTLED, { betId: pari.id, actor: userId, winner: gagnantUid, dedupe });
+      await grantXp(userId, 'BET_SETTLED', XP_VALUES.BET_SETTLED, { betId: pari.id, winnerUid: gagnantUid }, dedupe);
+    } catch (e) {
+      console.debug('[XP][Pari][Settle][Home] error', e);
     }
     setActionMsg('Le gagnant a été défini et les gains distribués !');
   };
@@ -219,6 +248,14 @@ export default function ParisEnCoursHomeSection({ userId, userPseudo, refresh }:
                   }
                   // Met à jour localement le pari comme 'en cours' pour affichage immédiat
                   setBets(bets.map(b => b.id === pari.id ? { ...b, statut: "en cours" } : b));
+                  // XP: acceptation de pari (+5) – idempotent via dedupe
+                  try {
+                    const dedupe = `BETA:${pari.id}:${userId}`;
+                    console.debug('[XP][Pari][Accept] grant +', XP_VALUES.BET_ACCEPTED, { betId: pari.id, userId, dedupe });
+                    await grantXp(userId, 'BET_ACCEPTED', XP_VALUES.BET_ACCEPTED, { betId: pari.id }, dedupe);
+                  } catch (e) {
+                    console.debug('[XP][Pari][Accept] error', e);
+                  }
                   setActionMsg("Pari accepté ! En attente de validation de l'admin.");
                   // Play sound after success
                   if (audioRef.current) {

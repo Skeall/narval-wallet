@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabaseClient";
+import { grantXp } from "../../xp/xpService";
+import { XP_VALUES } from "../../xp/xpRules";
 import Image from "next/image";
 
 interface Event {
@@ -74,6 +76,16 @@ export default function EventDetailPage() {
       : [...event.participants, currentUserUid];
     await supabase.from("events").update({ participants: newParticipants }).eq("id", event.id);
     setEvent(e => e ? { ...e, participants: newParticipants } : e);
+    // XP: join only when user newly participates
+    if (!isParticipant) {
+      try {
+        const dedupe = `JOIN:${event.id}:${currentUserUid}`;
+        console.debug('[XP][Events][Join:detail] grant +', XP_VALUES.PARTY_JOINED, { eventId: event.id, user: currentUserUid, dedupe });
+        await grantXp(currentUserUid, 'PARTY_JOINED', XP_VALUES.PARTY_JOINED, { eventId: event.id }, dedupe);
+      } catch (e) {
+        console.debug('[XP][Events][Join:detail] error', e);
+      }
+    }
   }
 
   if (loading || !event) {

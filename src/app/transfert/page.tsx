@@ -2,6 +2,8 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabaseClient";
+import { grantXp } from "../xp/xpService";
+import { XP_VALUES } from "../xp/xpRules";
 
 
 export default function TransfertPage() {
@@ -112,16 +114,30 @@ export default function TransfertPage() {
         .from("users")
         .update({ solde: destData.solde + montant })
         .eq("uid", destinataire);
-      // Crée la transaction
-      await supabase.from("transactions").insert({
-        type: "transfert",
-        from: user.id,
-        to: destinataire,
-        montant,
-        description: message,
-        date: new Date().toISOString(),
-      });
+      // Crée la transaction et récupère son id pour la dédup
+      const { data: txRows } = await supabase
+        .from("transactions")
+        .insert({
+          type: "transfert",
+          from: user.id,
+          to: destinataire,
+          montant,
+          description: message,
+          date: new Date().toISOString(),
+        })
+        .select("id")
+        .limit(1);
       setSuccessMsg(`Tu as envoyé ₦${montant} à ${users.find(u => u.uid === destinataire)?.pseudo || "ce membre"} 🎉`);
+      // XP: envoi de Narval (+2) – idempotent via dedupe
+      try {
+        const txId = (txRows && txRows[0] && txRows[0].id) || null;
+        const day = new Date().toISOString().slice(0,10);
+        const dedupe = txId ? `TRANSFER:${txId}:${user.id}` : `TRANSFER:${user.id}:${destinataire}:${montant}:${day}`;
+        console.debug('[XP][Transfert][Send] grant +', XP_VALUES.TRANSFER_SENT, { txId, to: destinataire, montant, dedupe });
+        await grantXp(user.id, 'TRANSFER_SENT', XP_VALUES.TRANSFER_SENT, { to: destinataire, montant, txId }, dedupe);
+      } catch (e) {
+        console.debug('[XP][Transfert][Send] error', e);
+      }
       // Joue le son de pièce à la validation
       if (audioRef.current) {
         audioRef.current.currentTime = 0;

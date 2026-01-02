@@ -1,5 +1,7 @@
 import { useState, useRef } from "react";
 import { supabase } from "@/utils/supabaseClient";
+import { grantXp } from "../../app/xp/xpService";
+import { XP_VALUES } from "../../app/xp/xpRules";
 
 interface PariTransactionItemProps {
   tx: any;
@@ -66,7 +68,8 @@ export default function PariTransactionItem({ tx, user, badgeColors, typeLabels,
       const { data: gagnant } = await supabase.from("users").select("solde").eq("uid", winnerUid).single();
       if (!gagnant) throw new Error("Le gagnant n'a pas été trouvé dans la base de données");
       await supabase.from("users").update({ solde: gagnant.solde + gainGagnant }).eq("uid", winnerUid);
-      await supabase.from("transactions").insert([
+      // log crédit gagnant
+      const { error: txInsertError } = await supabase.from("transactions").insert([
         {
           type: "pari",
           from: null,
@@ -76,7 +79,29 @@ export default function PariTransactionItem({ tx, user, badgeColors, typeLabels,
           date: new Date().toISOString(),
         }
       ]);
-      await supabase.from("paris").update({ statut: "terminé", gagnant_uid: winnerUid }).eq("id", pari.id);
+      if (txInsertError) {
+        console.debug('[Pari][SetWinner] transaction insert error', txInsertError);
+        setWinnerActionMsg('Erreur écriture transaction de gain: ' + (txInsertError.message || 'inconnue'));
+        setLoading(false);
+        return;
+      }
+      const { error: pariUpdateError } = await supabase.from("paris").update({ statut: "terminé", gagnant_uid: winnerUid }).eq("id", pari.id);
+      if (pariUpdateError) {
+        console.debug('[Pari][SetWinner] pari update error', pariUpdateError);
+        setWinnerActionMsg('Erreur mise à jour du pari: ' + (pariUpdateError.message || 'inconnue'));
+        setLoading(false);
+        return;
+      }
+      // XP: règlement de pari (+10) – idempotent via dedupe
+      try {
+        const dedupe = `BETS:${pari.id}:${user?.uid || ''}`;
+        console.debug('[XP][Pari][Settle] grant +', XP_VALUES.BET_SETTLED, { betId: pari.id, winnerUid, dedupe });
+        if (user?.uid) {
+          await grantXp(user.uid, 'BET_SETTLED', XP_VALUES.BET_SETTLED, { betId: pari.id, winnerUid }, dedupe);
+        }
+      } catch (e) {
+        console.debug('[XP][Pari][Settle] error', e);
+      }
 
       // Création du voeu Moracle pour le perdant
       const joueur1Uid = pari.joueur1_uid || (pari.joueur1 && pari.joueur1.uid);
@@ -106,6 +131,12 @@ export default function PariTransactionItem({ tx, user, badgeColors, typeLabels,
       }
 
       setWinnerActionMsg("Le gagnant a été défini et les gains distribués !");
+      try {
+        // refresh des données du portefeuille pour refléter le nouveau solde/transactions
+        refreshData();
+      } catch (e) {
+        console.debug('[Pari][SetWinner] refreshData error', e);
+      }
       setShowWinnerChoice(false);
       // Play victory sound if the user is the winner
       if (winnerUid === user.uid && audioRef.current) {
