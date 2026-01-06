@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
 import { supabase } from "@/utils/supabaseClient";
-import { grantXp } from "../xp/xpService";
 
 interface User {
   uid: string;
@@ -34,11 +33,6 @@ export default function AdminPage() {
   const [groupSelected, setGroupSelected] = useState<Set<string>>(new Set());
   const [groupFeedback, setGroupFeedback] = useState<string>("");
   const [feedback, setFeedback] = useState<string>("");
-  // XP group grant state (pink)
-  const [xpGroupAmount, setXpGroupAmount] = useState<number>(0);
-  const [xpGroupReason, setXpGroupReason] = useState<string>("");
-  const [xpGroupSelected, setXpGroupSelected] = useState<Set<string>>(new Set());
-  const [xpGroupFeedback, setXpGroupFeedback] = useState<string>("");
 
   useEffect(() => {
     fetchUsers();
@@ -140,14 +134,6 @@ export default function AdminPage() {
     });
   };
 
-  const toggleXpGroupSelect = (uid: string) => {
-    setXpGroupSelected((prev) => {
-      const s = new Set(prev);
-      if (s.has(uid)) s.delete(uid); else s.add(uid);
-      return s;
-    });
-  };
-
   const handleGroupSend = async () => {
     if (!groupAmount || groupAmount <= 0 || groupSelected.size === 0) return;
     setGroupFeedback("");
@@ -170,26 +156,6 @@ export default function AdminPage() {
     setGroupAmount(0);
     setGroupMotif("");
     fetchUsers();
-  };
-
-  const handleGroupGrantXp = async () => {
-    if (!xpGroupAmount || xpGroupAmount <= 0 || xpGroupSelected.size === 0) return;
-    setXpGroupFeedback("");
-    try {
-      console.debug('[Admin][XP][Group] grant start', { count: xpGroupSelected.size, amount: xpGroupAmount, reason: xpGroupReason });
-      const ops = Array.from(xpGroupSelected).map(async (uid) => {
-        await grantXp(uid, 'ADMIN_GRANT', xpGroupAmount, { reason: xpGroupReason || 'ADMIN', source: 'ADMIN_PAGE' });
-      });
-      await Promise.all(ops);
-      setXpGroupFeedback(`✅ +${xpGroupAmount} XP donnés à ${xpGroupSelected.size} joueurs`);
-      setXpGroupSelected(new Set());
-      setXpGroupAmount(0);
-      setXpGroupReason("");
-      console.debug('[Admin][XP][Group] grant done');
-    } catch (e) {
-      console.debug('[Admin][XP][Group] grant error', e);
-      setXpGroupFeedback('Erreur lors de la distribution XP');
-    }
   };
 
   return (
@@ -248,7 +214,7 @@ export default function AdminPage() {
           </table>
         </div>
 
-        {/* Distribution groupée (Narvals) */}
+        {/* Distribution groupée */}
         <div className="w-full md:w-80 bg-gray-900/80 rounded-2xl p-6 shadow-xl flex flex-col items-center">
           <h2 className="text-lg font-semibold mb-4 text-yellow-300">Distribution groupée</h2>
           <input type="number" className="w-full p-2 mb-2 rounded bg-gray-700 text-yellow-200" placeholder="Montant" value={groupAmount || ""} onChange={e => setGroupAmount(Number(e.target.value))} />
@@ -265,25 +231,6 @@ export default function AdminPage() {
             Envoyer à {groupSelected.size} joueur{groupSelected.size > 1 ? 's' : ''}
           </button>
           {groupFeedback && <div className="mt-4 text-yellow-200 font-semibold text-center">{groupFeedback}</div>}
-        </div>
-
-        {/* Distribution XP (rose) */}
-        <div className="w-full md:w-80 bg-gray-900/80 rounded-2xl p-6 shadow-xl flex flex-col items-center">
-          <h2 className="text-lg font-semibold mb-4 text-pink-300">Distribution XP</h2>
-          <input type="number" className="w-full p-2 mb-2 rounded bg-gray-700 text-pink-200" placeholder="Montant XP" value={xpGroupAmount || ""} onChange={e => setXpGroupAmount(Number(e.target.value))} />
-          <input type="text" className="w-full p-2 mb-2 rounded bg-gray-700 text-pink-200" placeholder="Motif (facultatif)" value={xpGroupReason} onChange={e => setXpGroupReason(e.target.value)} />
-          <div className="flex flex-wrap gap-2 mb-4 justify-center">
-            {users.map(user => (
-              <div key={user.uid} onClick={() => toggleXpGroupSelect(user.uid)} className={`cursor-pointer border-2 rounded-full p-1 ${xpGroupSelected.has(user.uid) ? 'border-pink-400 shadow-lg' : 'border-gray-700'} transition relative`}>
-                <img src={user.avatar || "/default-avatar.png"} alt="avatar" className="w-10 h-10 rounded-full" />
-                {xpGroupSelected.has(user.uid) && <span className="absolute top-0 right-0 bg-pink-400 w-4 h-4 rounded-full border-2 border-white"></span>}
-              </div>
-            ))}
-          </div>
-          <button className="bg-pink-500 hover:bg-pink-400 text-black font-bold py-2 px-6 rounded-full shadow-lg mt-2" onClick={handleGroupGrantXp}>
-            Donner XP à {xpGroupSelected.size} joueur{xpGroupSelected.size > 1 ? 's' : ''}
-          </button>
-          {xpGroupFeedback && <div className="mt-4 text-pink-200 font-semibold text-center">{xpGroupFeedback}</div>}
         </div>
       </div>
       {/* Ajout rapide d'une nouvelle enchère */}
