@@ -8,6 +8,7 @@ export type XpEventType =
   | "BET_ACCEPTED"
   | "BET_SETTLED"
   | "TRANSFER_SENT"
+  | "ADMIN_GRANT"
   | "REWARD_GRANTED";
 
 export const XP_VALUES: Record<Exclude<XpEventType, "REWARD_GRANTED">, number> = {
@@ -19,6 +20,7 @@ export const XP_VALUES: Record<Exclude<XpEventType, "REWARD_GRANTED">, number> =
   BET_ACCEPTED: 5,
   BET_SETTLED: 10,
   TRANSFER_SENT: 2,
+  ADMIN_GRANT: 0,
 };
 
 export const XP_THRESHOLD = 100;
