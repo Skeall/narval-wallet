@@ -85,6 +85,22 @@ export default function ValisePage() {
     return dups;
   }, [items]);
 
+  // Hall of Fame: sort winners by completion date ascending (1st, 2nd, 3rd...)
+  const winnersSorted = useMemo(() => {
+    try {
+      const sorted = [...winners].sort((a, b) => {
+        const da = new Date(a.completed_at).getTime();
+        const db = new Date(b.completed_at).getTime();
+        return da - db;
+      });
+      console.debug('[Valise][hof] winners sorted', sorted.map(w => ({ uid: w.uid, at: w.completed_at })));
+      return sorted;
+    } catch (e) {
+      console.debug('[Valise][hof] sort error', e);
+      return winners;
+    }
+  }, [winners]);
+
   // suspense animation for daily draw
   const [showDrawSuspense, setShowDrawSuspense] = useState(false);
   const [suspenseIndex, setSuspenseIndex] = useState(0);
@@ -147,12 +163,25 @@ export default function ValisePage() {
       supabase.from("valise_items").select("id,item,created_at").eq("uid", userId).order("created_at"),
       supabase.from("valise_state").select("uid,last_draw_date,last_exchange_date,completed_at").eq("uid", userId).single(),
       supabase.from("valise_events").select("id,type,uid,details,created_at,users!inner(uid,pseudo,avatar)").order("created_at", { ascending: false }).limit(50),
-      supabase.from("valise_state").select("uid,completed_at,users!inner(uid,pseudo,avatar)").not("completed_at", "is", null).order("completed_at", { ascending: false })
+      supabase.from("valise_events").select("uid,created_at,users!inner(uid,pseudo,avatar)").eq("type", "complete").order("created_at", { ascending: true })
     ]);
     setItems((it || []) as any);
     setState((st as any) || { uid: userId, last_draw_date: null, last_exchange_date: null, completed_at: null });
     setFeed((ev || []) as any);
-    const mapped = (ws || []).map((r: any) => ({ uid: r.uid, completed_at: r.completed_at, pseudo: r.users.pseudo, avatar: r.users.avatar }));
+    // build winners from 'complete' feed events (chronological, unique by uid)
+    const mapped: { uid: string; pseudo: string; avatar?: string; completed_at: string }[] = [];
+    try {
+      const seen = new Set<string>();
+      for (const r of (ws as any[]) || []) {
+        if (!r || !r.uid) continue;
+        if (seen.has(r.uid)) continue;
+        seen.add(r.uid);
+        mapped.push({ uid: r.uid, completed_at: r.created_at, pseudo: r.users?.pseudo, avatar: r.users?.avatar });
+      }
+      console.debug('[Valise] winners (from feed complete)', mapped.map(w => ({ uid: w.uid, at: w.completed_at })));
+    } catch (e) {
+      console.debug('[Valise] winners mapping error', e);
+    }
     setWinners(mapped);
     setLoading(false);
   };
@@ -228,6 +257,22 @@ export default function ValisePage() {
     await supabase.from("valise_events").insert({ type: "complete", uid: user.uid, details: { msg: "valise complétée" }, created_at: new Date().toISOString() });
     setMessage("🎉 Valise complétée ! +6 Narvals");
     await reloadAll();
+  };
+
+  // debug: manual check button to validate completion after an exchange
+  const handleDebugCheckComplete = async () => {
+    try {
+      console.debug('[Valise][debug-check] starting completion check');
+      if (!user) return;
+      if (state?.completed_at) { console.debug('[Valise][debug-check] already completed'); return; }
+      const ok = checkVictory(items);
+      console.debug('[Valise][debug-check] result=', ok, { items: items.map(i => i.item) });
+      if (ok) {
+        await awardVictory();
+      }
+    } catch (e) {
+      console.debug('[Valise][debug-check] error', e);
+    }
   };
 
   // debug: recycle two identical useless items -> remove both and reset today's draw
@@ -923,6 +968,37 @@ export default function ValisePage() {
 
       {/* debug: winners section hidden per UX focus */}
 
+      {/* Hall of Fame (avatars of completed users, in order) */}
+      {winnersSorted.length > 0 && (
+        <div className="w-full max-w-[430px] -mt-1 mb-1">
+          <div className="flex items-center gap-2 overflow-x-auto py-1">
+            {winnersSorted.map((w, idx) => {
+              const medalClass = idx === 0
+                ? 'ring-2 ring-amber-400/70'
+                : idx === 1
+                ? 'ring-2 ring-gray-300/60'
+                : idx === 2
+                ? 'ring-2 ring-amber-800/60'
+                : 'ring-1 ring-white/20';
+              const rank = idx + 1;
+              return (
+                <div key={`${w.uid}-${rank}`} className="relative flex flex-col items-center mr-2">
+                  <img
+                    src={w.avatar || '/default-avatar.png'}
+                    alt={w.pseudo}
+                    className={`w-9 h-9 rounded-full object-cover border border-gray-700 ${medalClass}`}
+                    draggable={false}
+                  />
+                  <span className="absolute -top-1 -left-1 text-[10px] px-1.5 rounded-full bg-black/70 border border-white/20 text-amber-200 font-bold shadow">
+                    {rank}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Feed (styled like /moracle) */}
       <div className="w-full max-w-[430px] bg-[#0F172A] rounded-2xl p-3 border border-white/10 mb-6">
         <div className="mb-2 text-sm font-bold">Activité</div>
@@ -945,20 +1021,40 @@ export default function ValisePage() {
                 const d = new Date(ev.created_at);
                 dateStr = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
               } catch {}
+              const isComplete = ev.type === 'complete'; // debug: golden highlight for completion
               return (
-                <li key={ev.id ?? idx} className="flex items-center gap-2 bg-[#181F2E] rounded-xl px-4 py-3 shadow min-h-[38px]">
+                <li
+                  key={ev.id ?? idx}
+                  className={
+                    `flex items-center gap-2 rounded-xl px-4 py-3 shadow min-h-[38px] border ` +
+                    (isComplete
+                      ? 'bg-gradient-to-r from-amber-700/25 to-yellow-600/15 border-amber-400/40 shadow-amber-500/20'
+                      : 'bg-[#181F2E] border-white/10')
+                  }
+                >
                   <img
                     src={(ev as any).users?.avatar || "/default-avatar.png"}
                     alt="avatar"
-                    className="w-7 h-7 rounded-full object-cover border border-gray-700"
+                    className={`w-7 h-7 rounded-full object-cover border border-gray-700 ${isComplete ? 'ring-2 ring-amber-400/60' : ''}`}
                   />
                   <span className="text-xs text-gray-400 min-w-[46px] text-center">{dateStr}</span>
-                  <span className="ml-2 text-xs text-amber-300 font-medium break-words whitespace-pre-line flex-1">{text}</span>
+                  <span className={`ml-2 text-xs break-words whitespace-pre-line flex-1 ${isComplete ? 'text-amber-200 font-semibold drop-shadow' : 'text-amber-300 font-medium'}`}>{text}</span>
                 </li>
               );
             })}
           </ul>
         )}
+      </div>
+      {/* debug: discreet button below the feed to validate completion */}
+      <div className="w-full max-w-[430px] -mt-4 mb-6 flex justify-end">
+        <button
+          className="px-2.5 py-1 rounded-md text-[10px] text-white/40 border border-white/10 bg-transparent hover:text-white/60 disabled:opacity-30"
+          disabled={victory}
+          onClick={handleDebugCheckComplete}
+          title="Vérifier valise (debug)"
+        >
+          valise debug
+        </button>
       </div>
     </div>
   );
