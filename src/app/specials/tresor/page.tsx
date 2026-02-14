@@ -53,6 +53,12 @@ interface AttemptRow {
 }
 
 const GRID_SIZE = 16;
+const TRESOR_BACKGROUNDS = [
+  "/specials/carte.png",
+  "/specials/carte2.png",
+  "/specials/carte3.png",
+  "/specials/carte4.png",
+];
 
 function randomTreasureIndex(): number {
   return Math.floor(Math.random() * GRID_SIZE);
@@ -75,7 +81,13 @@ export default function TresorPage() {
   const tresorAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const today = new Date().toISOString().slice(0, 10);
-  const mapBackgroundUrl = "/specials/carte.png";
+  const mapBackgroundUrl = useMemo(() => {
+    if (!game?.game_id) return TRESOR_BACKGROUNDS[0];
+
+    // Rotation stable par partie: une nouvelle game_id => un nouveau fond.
+    const hash = game.game_id.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return TRESOR_BACKGROUNDS[hash % TRESOR_BACKGROUNDS.length];
+  }, [game?.game_id]);
 
   const attemptsByCell = useMemo(() => {
     const map = new Map<number, TresorAttempt>();
