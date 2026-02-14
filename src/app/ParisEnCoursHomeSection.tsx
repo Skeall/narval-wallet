@@ -246,6 +246,35 @@ export default function ParisEnCoursHomeSection({ userId, userPseudo, refresh }:
                      }
                    } 
                   }
+                  // Débloque aussi 1 tentative Trésor pour les deux joueurs (même logique: premier pari du jour)
+                  for (const uid of [pari.joueur1_uid, pari.joueur2_uid]) {
+                    const { data: tresorUpdateData, error: tresorUpdateError } = await supabase
+                      .from('user_daily_tresor_attempt')
+                      .update({ has_pari_accepted: true })
+                      .eq('user_id', uid)
+                      .eq('date', today)
+                      .select('user_id');
+
+                    if (tresorUpdateError) {
+                      console.error('[Update Trésor]', { uid, today, tresorUpdateError });
+                    }
+
+                    if (!tresorUpdateError && tresorUpdateData && tresorUpdateData.length > 0) {
+                      console.log('[Update Trésor]', { uid, today });
+                    } else {
+                      const { error: tresorInsertError } = await supabase.from('user_daily_tresor_attempt').insert({
+                        user_id: uid,
+                        date: today,
+                        has_pari_accepted: true,
+                        has_used_attempt: false,
+                      });
+                      if (tresorInsertError) {
+                        console.error('[Insert Trésor]', { uid, today, tresorInsertError });
+                      } else {
+                        console.log('[Insert Trésor]', { uid, today });
+                      }
+                    }
+                  }
                   // Met à jour localement le pari comme 'en cours' pour affichage immédiat
                   setBets(bets.map(b => b.id === pari.id ? { ...b, statut: "en cours" } : b));
                   // XP: acceptation de pari (+5) – idempotent via dedupe

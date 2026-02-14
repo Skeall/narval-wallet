@@ -1,0 +1,37 @@
+<svg width="1600" height="800" viewBox="0 0 1600 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2E3B52"/>
+      <stop offset="55%" stop-color="#3E516F"/>
+      <stop offset="100%" stop-color="#B88A4C"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1240 180) rotate(90) scale(210)">
+      <stop stop-color="#FFE9A3" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#FFE9A3" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1600" height="800" fill="url(#bg)"/>
+  <rect y="520" width="1600" height="280" fill="#C0975F"/>
+  <rect y="570" width="1600" height="230" fill="#B9884B"/>
+  <circle cx="1240" cy="180" r="220" fill="url(#sun)"/>
+
+  <path d="M180 600C360 500 530 520 710 610" stroke="#8B683D" stroke-width="14" stroke-linecap="round" stroke-dasharray="10 16"/>
+  <path d="M710 610C860 690 1010 640 1170 540" stroke="#7A5A35" stroke-width="14" stroke-linecap="round" stroke-dasharray="10 16"/>
+
+  <rect x="1000" y="420" width="220" height="130" rx="16" fill="#5E3B20"/>
+  <rect x="1000" y="420" width="220" height="60" rx="16" fill="#7E512D"/>
+  <rect x="1088" y="466" width="44" height="52" rx="8" fill="#E5B356"/>
+  <path d="M1070 465H1150" stroke="#E5B356" stroke-width="8" stroke-linecap="round"/>
+
+  <circle cx="380" cy="300" r="95" fill="#2B2F3D"/>
+  <circle cx="380" cy="300" r="70" fill="#1E222F"/>
+  <path d="M345 335L430 250" stroke="#A3A9B8" stroke-width="18" stroke-linecap="round"/>
+
+  <text x="120" y="180" fill="#FBE8B6" font-family="Verdana, Geneva, sans-serif" font-size="86" font-weight="700">
+    CHASSE AU TRÉSOR
+  </text>
+  <text x="124" y="248" fill="#E7D5A1" font-family="Verdana, Geneva, sans-serif" font-size="40" opacity="0.9">
+    Une tentative par jour après ton premier pari
+  </text>
+</svg>

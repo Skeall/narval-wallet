@@ -1,11 +1,19 @@
 "use client";
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 // À uploader dans /public/specials/pinata-pari-cover.jpg (800x400px conseillé, JPG ou WEBP)
 const SPECIALS = [
+  // Mettre l'événement Trésor en premier (actif)
+  {
+    slug: "chasse-tresor",
+    title: "Chasse au Trésor",
+    cover: "/specials/tresor-cover.png",
+    until: "Disponible jusqu'au 1er juin",
+    description: "Un trésor est caché, aide Jack à le trouver avant les autres.",
+    link: "/specials/tresor"
+  },
   // Mettre l'événement Valise en premier
   {
     slug: "valise",
@@ -138,7 +146,7 @@ export default function SpecialsPage() {
       } else {
         router.push('/valise');
       }
-    } catch (err) {
+    } catch {
       router.push('/valise');
     }
   };
@@ -160,6 +168,8 @@ export default function SpecialsPage() {
                       ? handleGoToPinata
                       : evt.slug === "moracle-genie"
                         ? () => router.push('/moracle')
+                        : evt.slug === "chasse-tresor"
+                          ? () => router.push('/specials/tresor')
                         : evt.slug === "valise"
                           ? handleGoToValise
                           : undefined
@@ -213,6 +223,8 @@ export default function SpecialsPage() {
                         ? handleGoToPinata
                         : evt.slug === "moracle-genie"
                           ? () => router.push('/moracle')
+                          : evt.slug === "chasse-tresor"
+                            ? () => router.push('/specials/tresor')
                           : evt.slug === "valise"
                             ? handleGoToValise
                             : undefined
@@ -238,7 +250,7 @@ export default function SpecialsPage() {
             onMouseDown={(e) => { e.stopPropagation(); handleSkipValiseIntro(); }}
             onTouchEnd={handleSkipValiseIntro}
           >
-            Passer l'intro
+            Passer l&apos;intro
           </button>
           <video
             ref={videoRef}
