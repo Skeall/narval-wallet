@@ -4,6 +4,7 @@ import { useLooseSound } from "./LooseSoundProvider";
 import { supabase } from "@/utils/supabaseClient";
 import { grantXp } from "./xp/xpService";
 import { XP_VALUES } from "./xp/xpRules";
+import { sendNotificationToUser } from "@/utils/notifications";
 import BetAcceptCard from "./components/BetAcceptCard";
 
 interface ParisEnCoursHomeSectionProps {
@@ -104,6 +105,35 @@ export default function ParisEnCoursHomeSection({ userId, userPseudo, refresh }:
       console.debug('[XP][Pari][Settle][Home] error', e);
     }
     setActionMsg('Le gagnant a été défini et les gains distribués !');
+    // debug: Push notifications au gagnant et au perdant
+    try {
+      const joueur1Uid2 = pari.joueur1_uid || pari.joueur1?.uid;
+      const joueur2Uid2 = pari.joueur2_uid || pari.joueur2?.uid;
+      const perdantUid2 = joueur1Uid2 === gagnantUid ? joueur2Uid2 : joueur1Uid2;
+      console.debug('[Push][Pari][Winner] Notifying winner:', gagnantUid, 'loser:', perdantUid2);
+      // Notifie le gagnant (sauf si c'est lui qui a déclenché l'action)
+      if (gagnantUid !== userId) {
+        await sendNotificationToUser(
+          gagnantUid,
+          `Tu as gagné ₦${montantTotal} ! 🎉`,
+          `${pari.description || 'Ton pari est terminé'}`,
+          '/',
+          'pari-gagne'
+        );
+      }
+      // Notifie le perdant (sauf si c'est lui qui a déclenché l'action)
+      if (perdantUid2 && perdantUid2 !== userId) {
+        await sendNotificationToUser(
+          perdantUid2,
+          `Tu as perdu ton pari 😅`,
+          `₦${pari.montant} perdus. Mais Moracle t'attend ! 🧞‍♂️`,
+          '/moracle',
+          'pari-perdu'
+        );
+      }
+    } catch (e) {
+      console.debug('[Push][Pari][Winner] notification error', e);
+    }
   };
 
   // Annuler un pari en cours et rembourser les deux joueurs
@@ -286,6 +316,19 @@ export default function ParisEnCoursHomeSection({ userId, userPseudo, refresh }:
                     console.debug('[XP][Pari][Accept] error', e);
                   }
                   setActionMsg("Pari accepté ! En attente de validation de l'admin.");
+                  // debug: Push notification au joueur1 (créateur du pari)
+                  try {
+                    console.debug('[Push][Pari][Accept] Notifying joueur1:', pari.joueur1_uid);
+                    await sendNotificationToUser(
+                      pari.joueur1_uid,
+                      `${userPseudo} a accepté ton pari ! ✅`,
+                      `Pari de ₦${pari.montant}${pari.description ? ` — ${pari.description}` : ''}`,
+                      '/',
+                      'pari-accepte'
+                    );
+                  } catch (e) {
+                    console.debug('[Push][Pari][Accept] notification error', e);
+                  }
                   // Play sound after success
                   if (audioRef.current) {
                     audioRef.current.currentTime = 0;

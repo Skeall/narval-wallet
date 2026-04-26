@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabaseClient";
 import { grantXp } from "../xp/xpService";
 import { XP_VALUES } from "../xp/xpRules";
+import { sendNotificationToUser } from "@/utils/notifications";
 
 
 export default function TransfertPage() {
@@ -137,6 +138,20 @@ export default function TransfertPage() {
         await grantXp(user.id, 'TRANSFER_SENT', XP_VALUES.TRANSFER_SENT, { to: destinataire, montant, txId }, dedupe);
       } catch (e) {
         console.debug('[XP][Transfert][Send] error', e);
+      }
+      // debug: Push notification au destinataire
+      try {
+        const recipientPseudo = users.find(u => u.uid === destinataire)?.pseudo || 'Quelqu\'un';
+        console.debug('[Push][Transfert] Notifying recipient:', destinataire);
+        await sendNotificationToUser(
+          destinataire,
+          `Tu as reçu ₦${montant} ! 💸`,
+          `${user?.email?.split('@')[0] || 'Un ami'} t'a envoyé des Narvals${message ? ` — "${message}"` : ''}`,
+          '/portefeuille',
+          'transfert-recu'
+        );
+      } catch (e) {
+        console.debug('[Push][Transfert] notification error', e);
       }
       // Joue le son de pièce à la validation
       if (audioRef.current) {

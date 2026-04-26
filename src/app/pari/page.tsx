@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabaseClient";
 import { grantXp } from "../xp/xpService";
 import { XP_VALUES } from "../xp/xpRules";
+import { sendNotificationToUser } from "@/utils/notifications";
 
 interface User {
   uid: string;
@@ -322,6 +323,20 @@ function PariPage() {
                   await grantXp(currentUser.uid, 'BET_CREATED', XP_VALUES.BET_CREATED, { betId, montant, opponent: selectedOpponent }, dedupe);
                 } catch (e) {
                   console.debug('[XP][Pari][Create] error', e);
+                }
+                // debug: Push notification à l'adversaire
+                try {
+                  const opponentPseudo = users.find(u => u.uid === selectedOpponent)?.pseudo || 'Quelqu\'un';
+                  console.debug('[Push][Pari][Create] Notifying opponent:', selectedOpponent);
+                  await sendNotificationToUser(
+                    selectedOpponent,
+                    `${currentUser.pseudo} te défie ! 🎯`,
+                    `Pari de ₦${montant}${description ? ` — ${description}` : ''}`,
+                    '/',
+                    'pari-nouveau'
+                  );
+                } catch (e) {
+                  console.debug('[Push][Pari][Create] notification error', e);
                 }
               }
               setLoading(false);

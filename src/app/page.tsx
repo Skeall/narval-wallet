@@ -15,6 +15,7 @@ import LoadingVideo from "./components/LoadingVideo";
 import XPRingAvatar from "./components/XPRingAvatar";
 import { applyDailyPassiveXp, applyLoginXp, getUserXpState, grantXp } from "./xp/xpService";
 import { getPendingRewardsCount, claimNextReward } from "./xp/rewardService";
+import NotificationBell from "./components/NotificationBell";
 
 interface UserData {
   uid: string;
@@ -212,6 +213,8 @@ export default function Home() {
               >
                 <img src="/icons/megaphone.png" alt="Nouveautés" className="w-6 h-6 object-contain" />
               </button>
+              {/* debug: notification bell for push notifications */}
+              <NotificationBell />
             </div>
             {/* Groupe droite: avatar + badge cadeau si récompense en attente */}
             <div className="flex items-center gap-2">
