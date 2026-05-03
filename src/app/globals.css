@@ -34,3 +34,13 @@ body {
 .page-fade-slide-enter {
   animation: pageFadeSlideIn 240ms ease-out both;
 }
+
+/* debug: fade-in for trailer CTA screen */
+@keyframes fadeIn {
+  0% { opacity: 0; transform: translateY(16px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 600ms ease-out both;
+}
